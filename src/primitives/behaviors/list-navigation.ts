@@ -1,36 +1,25 @@
-import { computed, Signal, WritableSignal } from '@angular/core';
-import { Behavior, BehaviorEventTarget, derivedSignal } from './base';
+import { computed, signal, Signal, untracked } from '@angular/core';
+import { Behavior, BehaviorEventTarget, UiState } from './base';
 
-export interface ListNavigationOptions {
-  readonly wrap: boolean;
-}
-
-export interface ListNavigationItemInputs<T> {
+export interface ListNavigationItemState<T> extends UiState {
   readonly identity: T;
 
   readonly disabled?: Signal<boolean>;
 }
 
-export type ListNavigationOrientationInputs =
-  | {
-      readonly orientation: Signal<'vertical' | 'horizontal'>;
-      readonly direction: Signal<'ltr' | 'rtl'>;
-    }
-  | {
-      readonly orientation?: Signal<'vertical'>;
-      readonly direction?: Signal<'ltr' | 'rtl'>;
-    };
-
-export type ListNavigationInputs<T> = {
-  readonly items: Signal<readonly ListNavigationItemInputs<T>[]>;
+export interface ListNavigationState<T> extends UiState {
   readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
 
-  readonly active?: Signal<T | undefined>;
+  readonly items: Signal<readonly ListNavigationItemState<T>[]>;
   readonly disabled?: Signal<boolean>;
-} & ListNavigationOrientationInputs;
+  readonly orientation?: Signal<'vertical' | 'horizontal'>;
+  readonly direction?: Signal<'ltr' | 'rtl'>;
 
-export interface ListNavigationState<T> {
-  readonly active: T | undefined;
+  active: Signal<T | undefined>;
+}
+
+export interface ListNavigationOptions {
+  readonly wrap: boolean;
 }
 
 export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
@@ -38,31 +27,25 @@ export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
 };
 
 export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> {
-  readonly state: Signal<ListNavigationState<T>>;
-
   private readonly options: ListNavigationOptions;
-  private readonly active: WritableSignal<T | undefined>;
-  private readonly activeIndex: Signal<number>;
 
-  constructor(private control: ListNavigationInputs<T>, options?: Partial<ListNavigationOptions>) {
-    super();
+  private readonly active = signal(this.uiState.active());
+
+  private readonly activeIndex = computed(() => {
+    return this.uiState.items().findIndex((i) => i.identity === untracked(() => this.active()));
+  });
+
+  constructor(uiState: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
+    super(uiState);
 
     this.options = { ...DEFAULT_LIST_KEY_NAVIGATION_OPTIONS, ...options };
-    this.active = derivedSignal(() => this.control.active?.());
-    this.activeIndex = computed(() => {
-      return this.control.items().findIndex((i) => i.identity === this.active());
-    });
-
-    this.state = computed(() => ({
-      active: this.active(),
-    }));
-
-    this.listeners.push(control.keydownEvents.listen((event) => this.handleKeydown(event)));
+    uiState.active = this.active;
+    this.listeners.push(uiState.keydownEvents.listen((event) => this.handleKeydown(event)));
   }
 
   private handleKeydown(event: KeyboardEvent) {
-    const orientation = this.control.orientation?.() ?? 'vertical';
-    const direction = this.control.direction?.() ?? 'ltr';
+    const orientation = this.uiState.orientation?.() ?? 'vertical';
+    const direction = this.uiState.direction?.() ?? 'ltr';
 
     switch (event.key) {
       case 'ArrowDown':
@@ -107,10 +90,10 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       nextIndex = this.clampIndex(nextIndex + 1);
     } while (
       !this.canActivate(nextIndex) &&
-      (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.control.items().length - 1)
+      (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.uiState.items().length - 1)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.control.items()[nextIndex].identity);
+      this.active.set(this.uiState.items()[nextIndex].identity);
     }
   }
 
@@ -124,19 +107,19 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex > 0)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.control.items()[nextIndex].identity);
+      this.active.set(this.uiState.items()[nextIndex].identity);
     }
   }
 
   private clampIndex(index: number) {
-    const itemCount = this.control.items().length;
+    const itemCount = this.uiState.items().length;
     return this.options.wrap
       ? (index + itemCount) % itemCount
       : Math.min(Math.max(index, 0), itemCount - 1);
   }
 
   private canActivate(index: number) {
-    if (this.control.disabled?.() || this.control.items()[index].disabled?.()) {
+    if (this.uiState.disabled?.() || this.uiState.items()[index].disabled?.()) {
       return false;
     }
     return true;

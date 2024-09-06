@@ -15,10 +15,42 @@ export function derivedSignal<T>(fn: () => T): WritableSignal<T> {
   return s;
 }
 
-export abstract class Behavior<T> {
-  abstract readonly state: Signal<T>;
+export function merge<T>(a: Signal<T>, b: Signal<T>): Signal<T> {
+  const ca = computed(() => {
+    const ia = a();
+    const cb = computed(() => signal(b()));
+    untracked(() => cb().set(ia));
+    return cb;
+  });
+  const s = (() => ca()()()) as Signal<T>;
+  s[SIGNAL] = ca[SIGNAL];
+  return s;
+}
 
+const UI_STATE = Symbol();
+
+export type UiState<T extends object = object> = T & { [UI_STATE]: T | undefined };
+
+export function createUiState<T extends { [k: string]: any }>(state: T): UiState<T> {
+  const stateSignal = signal(state);
+  return new Proxy(
+    { ...state, [UI_STATE]: undefined },
+    {
+      get(_, property) {
+        return Reflect.get(stateSignal(), property);
+      },
+      set(_, property, value) {
+        untracked(() => stateSignal.update((old) => ({ ...old, [property]: value })));
+        return true;
+      },
+    }
+  );
+}
+
+export class Behavior<T extends UiState<object>> {
   protected readonly listeners: VoidFunction[] = [];
+
+  constructor(protected readonly uiState: T) {}
 
   remove() {
     for (const unlisten of this.listeners) {

@@ -11,11 +11,8 @@ import {
   signal,
 } from '@angular/core';
 import { ActiveDescendantFocusBehavior } from '../behaviors/active-descendant-focus';
-import { derivedSignal, EventDispatcher } from '../behaviors/base';
-import { ListExplicitSelectionBehavior } from '../behaviors/list-explicit-selection';
-import { ListFollowFocusSelectionBehavior } from '../behaviors/list-follow-focus-selection';
+import { createUiState, derivedSignal, EventDispatcher } from '../behaviors/base';
 import { ListNavigationBehavior } from '../behaviors/list-navigation';
-import { RovingTabindexFocusBehavior } from '../behaviors/roving-tabindex-focus';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -54,7 +51,7 @@ export class ListboxOption {
   readonly id = input<string>(`tbd-listbox-option-${nextId++}`);
 
   // Set up our internal state.
-  readonly uiState = {
+  readonly uiState = createUiState({
     identity: this as ListboxOption,
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
     disabled: this.disabled,
@@ -62,7 +59,7 @@ export class ListboxOption {
     id: this.id,
     active: computed((): boolean => this.listbox.uiState.active() === this),
     selected: computed((): boolean => this.listbox.uiState.selected() === this),
-  };
+  });
 }
 
 @Directive({
@@ -94,7 +91,7 @@ export class Listbox {
 
   // Set up our internal state.
   private readonly disabledByState = signal(false);
-  readonly uiState = {
+  readonly uiState = createUiState({
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
     disabledByState: this.disabledByState,
     disabled: computed(() => this.disabled() || this.disabledByState()),
@@ -105,10 +102,11 @@ export class Listbox {
     orientation: this.orientation,
     direction: this.directionality,
     items: computed(() => this.items().map((item) => item.uiState)),
+    focused: signal<HTMLElement | undefined>(undefined),
     keydownEvents: new EventDispatcher<KeyboardEvent>(),
     focusinEvents: new EventDispatcher<FocusEvent>(),
     focusoutEvents: new EventDispatcher<FocusEvent>(),
-  };
+  });
 
   // Attach behaviors to the state.
   private readonly navigationBehavior = computed(
@@ -117,48 +115,24 @@ export class Listbox {
         wrap: this.options().wrapKeyNavigation,
       })
   );
-  private readonly focusBehavior = computed(() =>
-    this.options().useActiveDescendant
-      ? new ActiveDescendantFocusBehavior(this.uiState)
-      : new RovingTabindexFocusBehavior(this.uiState)
-  );
+  private readonly focusBehavior = computed(
+    () =>
+      //this.options().useActiveDescendant
+      //  ?
+      new ActiveDescendantFocusBehavior(this.uiState)
+    //  : new RovingTabindexFocusBehavior(this.uiState)
+  ); /*
   private readonly selectionBehavior = computed(() =>
     this.options().selectionFollowsFocus
       ? new ListFollowFocusSelectionBehavior(this.uiState)
       : new ListExplicitSelectionBehavior(this.uiState)
-  );
+  );*/
 
   constructor() {
-    // Sync our behavior state back to our internal state.
-    effect(
-      () => {
-        const { selected, disabledByState } = this.selectionBehavior().state();
-        this.uiState.selected.set(selected);
-        this.uiState.disabledByState.set(disabledByState);
-      },
-      { allowSignalWrites: true }
-    );
-    effect(
-      () => {
-        const { active } = this.navigationBehavior().state();
-        this.uiState.active.set(active);
-      },
-      { allowSignalWrites: true }
-    );
-    effect(
-      () => {
-        const { tabindex, active, activeDescendantId, items, focused } =
-          this.focusBehavior().state();
-        this.uiState.tabindex.set(tabindex);
-        this.uiState.active.set(active);
-        this.uiState.activeDescendantId.set(activeDescendantId);
-        for (const [item, { tabindex }] of items) {
-          item.uiState.tabindex.set(tabindex);
-        }
-        afterNextRender(() => focused?.focus(), { injector: this.injector });
-      },
-      { allowSignalWrites: true }
-    );
+    effect(() => {
+      this.uiState.focused();
+      afterNextRender(() => this.uiState.focused()?.focus(), { injector: this.injector });
+    });
 
     // Clean up our behaviors when they change.
     effect((onCleanup) => {
@@ -168,10 +142,10 @@ export class Listbox {
     effect((onCleanup) => {
       const behavior = this.focusBehavior();
       onCleanup(() => behavior.remove());
-    });
+    }); /*
     effect((onCleanup) => {
       const behavior = this.selectionBehavior();
       onCleanup(() => behavior.remove());
-    });
+    });*/
   }
 }

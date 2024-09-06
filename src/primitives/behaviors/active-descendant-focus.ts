@@ -1,63 +1,75 @@
-import { computed, signal, Signal } from '@angular/core';
-import { Behavior, BehaviorEventTarget, hasFocus } from './base';
+import { computed, signal, Signal, untracked } from '@angular/core';
+import { Behavior, BehaviorEventTarget, hasFocus, UiState } from './base';
 
-export interface ActiveDescendantFocusItemInputs<T> {
+export interface ActiveDescendantFocusItemState<T> extends UiState {
   readonly identity: T;
-  readonly id: Signal<string>;
 
+  readonly id: Signal<string>;
   readonly disabled?: Signal<boolean>;
+
+  tabindex: Signal<number | undefined>;
 }
 
-export interface ActiveDescendantFocusInputs<T> {
+export interface ActiveDescendantFocusState<T> extends UiState {
   readonly element: HTMLElement;
-  readonly items: Signal<readonly ActiveDescendantFocusItemInputs<T>[]>;
-  readonly active: Signal<T | undefined>;
+
   readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
 
+  readonly items: Signal<ActiveDescendantFocusItemState<T>[]>;
   readonly disabled?: Signal<boolean>;
-}
 
-export interface ActiveDescendantFocusState<T> {
-  readonly tabindex: number;
-  readonly active: T | undefined;
-  readonly activeDescendantId: string | undefined;
-  readonly focused: HTMLElement | undefined;
-  readonly items: [T, { tabindex: number }][];
+  tabindex: Signal<number | undefined>;
+  active: Signal<T | undefined>;
+  activeDescendantId: Signal<string | undefined>;
+  focused: Signal<HTMLElement | undefined>;
 }
 
 export class ActiveDescendantFocusBehavior<T> extends Behavior<ActiveDescendantFocusState<T>> {
-  readonly state: Signal<ActiveDescendantFocusState<T>>;
+  private readonly activeItem = computed(() => {
+    const activeItem = this.uiState
+      .items()
+      .find((item) => item.identity === untracked(() => this.uiState.active()));
+    return this.uiState.disabled?.() || activeItem?.disabled?.() ? undefined : activeItem;
+  });
 
-  private readonly focused = signal<HTMLElement | undefined>(undefined);
+  private readonly active = computed(() => {
+    if (this.uiState.disabled?.()) return untracked(() => this.uiState.active());
+    return this.activeItem()?.identity;
+  });
 
-  constructor(private control: ActiveDescendantFocusInputs<T>) {
-    super();
+  private readonly activeDescendantId = computed(() => {
+    if (this.uiState.disabled?.()) return this.uiState.activeDescendantId();
+    return this.activeItem()?.id();
+  });
 
-    const activeItem = computed(() => {
-      const activeItem = control.items().find((item) => item.identity === control.active());
-      return control.disabled?.() || activeItem?.disabled?.() ? undefined : activeItem;
-    });
+  private readonly tabindex = computed(() => (this.uiState.disabled?.() ? -1 : 0));
 
-    this.focused = signal(hasFocus(control.element) ? control.element : undefined);
+  private readonly focused = signal(
+    !this.uiState.disabled?.() && hasFocus(this.uiState.element)
+      ? this.uiState.element
+      : this.uiState.focused()
+  );
 
-    this.state = computed(() => ({
-      tabindex: control.disabled?.() ? -1 : 0,
-      active: activeItem()?.identity,
-      activeDescendantId: activeItem()?.id(),
-      focused: this.focused(),
-      items: control.items().map((item) => [item.identity, { tabindex: -1 }]),
-    }));
+  constructor(uiState: ActiveDescendantFocusState<T>) {
+    super(uiState);
 
-    if (hasFocus(control.element)) {
-      control.element.focus();
-    }
-    this.listeners.push(control.focusinEvents.listen(() => this.handleFocusin()));
+    uiState.active = this.active;
+    /*uiState.activeDescendantId = merge(uiState.activeDescendantId, this.activeDescendantId);
+    uiState.tabindex = merge(uiState.tabindex, this.tabindex);
+    uiState.focused = merge(uiState.focused, this.focused);*/
+
+    // TODO: this will probably miss new items...
+    /*for (const itemUiState of this.uiState.items()) {
+      itemUiState.tabindex = signal(-1);
+    }*/
+
+    this.listeners.push(this.uiState.focusinEvents.listen(() => this.handleFocusin()));
   }
 
   private handleFocusin() {
-    if (this.control.disabled?.()) {
+    if (this.uiState.disabled?.()) {
       return;
     }
-    this.focused.set(this.control.element);
+    this.focused.set(this.uiState.element);
   }
 }
