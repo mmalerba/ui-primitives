@@ -9,10 +9,13 @@ import {
   Injector,
   input,
   signal,
+  untracked,
 } from '@angular/core';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { createExtendableState } from '../base/extendable-state';
 import { ActiveDescendantFocusBehavior } from '../behaviors/active-descendant-focus';
-import { createUiState, derivedSignal, EventDispatcher } from '../behaviors/base';
 import { ListNavigationBehavior } from '../behaviors/list-navigation';
+import { RovingTabindexFocusBehavior } from '../behaviors/roving-tabindex-focus';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -51,7 +54,7 @@ export class ListboxOption {
   readonly id = input<string>(`tbd-listbox-option-${nextId++}`);
 
   // Set up our internal state.
-  readonly uiState = createUiState({
+  readonly uiState = createExtendableState({
     identity: this as ListboxOption,
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
     disabled: this.disabled,
@@ -91,13 +94,13 @@ export class Listbox {
 
   // Set up our internal state.
   private readonly disabledByState = signal(false);
-  readonly uiState = createUiState({
+  readonly uiState = createExtendableState({
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
     disabledByState: this.disabledByState,
     disabled: computed(() => this.disabled() || this.disabledByState()),
     tabindex: signal<number | undefined>(undefined),
-    active: derivedSignal<ListboxOption | undefined>(() => this.active()),
-    selected: derivedSignal<ListboxOption | undefined>(() => this.selected()),
+    active: this.active,
+    selected: this.selected,
     activeDescendantId: signal<string | undefined>(undefined),
     orientation: this.orientation,
     direction: this.directionality,
@@ -109,19 +112,23 @@ export class Listbox {
   });
 
   // Attach behaviors to the state.
-  private readonly navigationBehavior = computed(
-    () =>
-      new ListNavigationBehavior(this.uiState, {
-        wrap: this.options().wrapKeyNavigation,
-      })
-  );
-  private readonly focusBehavior = computed(
-    () =>
-      //this.options().useActiveDescendant
-      //  ?
-      new ActiveDescendantFocusBehavior(this.uiState)
-    //  : new RovingTabindexFocusBehavior(this.uiState)
-  ); /*
+  private readonly navigationBehavior = computed(() => {
+    const wrap = this.options().wrapKeyNavigation;
+    return untracked(
+      () =>
+        new ListNavigationBehavior(this.uiState, {
+          wrap,
+        })
+    );
+  });
+  private readonly focusBehavior = computed(() => {
+    const useActiveDescendant = this.options().useActiveDescendant;
+    return untracked(() =>
+      useActiveDescendant
+        ? new ActiveDescendantFocusBehavior(this.uiState)
+        : new RovingTabindexFocusBehavior(this.uiState)
+    );
+  }); /*
   private readonly selectionBehavior = computed(() =>
     this.options().selectionFollowsFocus
       ? new ListFollowFocusSelectionBehavior(this.uiState)

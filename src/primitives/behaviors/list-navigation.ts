@@ -1,22 +1,24 @@
-import { computed, signal, Signal, untracked } from '@angular/core';
-import { Behavior, BehaviorEventTarget, UiState } from './base';
+import { computed, Signal } from '@angular/core';
+import { Behavior } from '../base/behavior';
+import { BehaviorEventTarget } from '../base/event-dispatcher';
+import { ExtendableState } from '../base/extendable-state';
 
-export interface ListNavigationItemState<T> extends UiState {
+export type ListNavigationItemState<T> = ExtendableState<{
   readonly identity: T;
 
   readonly disabled?: Signal<boolean>;
-}
+}>;
 
-export interface ListNavigationState<T> extends UiState {
+export type ListNavigationState<T> = ExtendableState<{
   readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
 
   readonly items: Signal<readonly ListNavigationItemState<T>[]>;
+  readonly active: Signal<T | undefined>;
+
   readonly disabled?: Signal<boolean>;
   readonly orientation?: Signal<'vertical' | 'horizontal'>;
   readonly direction?: Signal<'ltr' | 'rtl'>;
-
-  active: Signal<T | undefined>;
-}
+}>;
 
 export interface ListNavigationOptions {
   readonly wrap: boolean;
@@ -29,23 +31,22 @@ export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
 export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> {
   private readonly options: ListNavigationOptions;
 
-  private readonly active = signal(this.uiState.active());
+  private readonly active = this.state.active.extend((value) => value);
 
-  private readonly activeIndex = computed(() => {
-    return this.uiState.items().findIndex((i) => i.identity === untracked(() => this.active()));
-  });
+  private readonly activeIndex = computed(() =>
+    this.state.items().findIndex((i) => i.identity === this.active())
+  );
 
-  constructor(uiState: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
-    super(uiState);
+  constructor(state: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
+    super(state);
 
     this.options = { ...DEFAULT_LIST_KEY_NAVIGATION_OPTIONS, ...options };
-    uiState.active = this.active;
-    this.listeners.push(uiState.keydownEvents.listen((event) => this.handleKeydown(event)));
+    this.listeners.push(state.keydownEvents.listen((event) => this.handleKeydown(event)));
   }
 
   private handleKeydown(event: KeyboardEvent) {
-    const orientation = this.uiState.orientation?.() ?? 'vertical';
-    const direction = this.uiState.direction?.() ?? 'ltr';
+    const orientation = this.state.orientation?.() ?? 'vertical';
+    const direction = this.state.direction?.() ?? 'ltr';
 
     switch (event.key) {
       case 'ArrowDown':
@@ -90,10 +91,10 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       nextIndex = this.clampIndex(nextIndex + 1);
     } while (
       !this.canActivate(nextIndex) &&
-      (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.uiState.items().length - 1)
+      (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.state.items().length - 1)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.uiState.items()[nextIndex].identity);
+      this.active.set(this.state.items()[nextIndex].identity);
     }
   }
 
@@ -107,19 +108,19 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex > 0)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.uiState.items()[nextIndex].identity);
+      this.active.set(this.state.items()[nextIndex].identity);
     }
   }
 
   private clampIndex(index: number) {
-    const itemCount = this.uiState.items().length;
+    const itemCount = this.state.items().length;
     return this.options.wrap
       ? (index + itemCount) % itemCount
       : Math.min(Math.max(index, 0), itemCount - 1);
   }
 
   private canActivate(index: number) {
-    if (this.uiState.disabled?.() || this.uiState.items()[index].disabled?.()) {
+    if (this.state.disabled?.() || this.state.items()[index].disabled?.()) {
       return false;
     }
     return true;
