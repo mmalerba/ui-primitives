@@ -1,4 +1,4 @@
-import { Signal } from '@angular/core';
+import { computed, Signal } from '@angular/core';
 import { Behavior } from '../base/behavior';
 import { hasFocus } from '../base/dom';
 import { BehaviorEventTarget } from '../base/event-dispatcher';
@@ -33,17 +33,17 @@ export class ActiveDescendantFocusBehavior<T> extends Behavior<ActiveDescendantF
   constructor(state: ActiveDescendantFocusState<T>) {
     super(state);
 
-    state.active.extend(
-      this,
-      (active) => state.items().find((i) => i.identity === active)?.identity
-    );
+    state.active.extend(this, (active) => {
+      const item = state.items().find((i) => i.identity === active);
+      return item?.disabled?.() ? undefined : item?.identity;
+    });
 
-    state.activeDescendantId.extend(this, () =>
-      state
-        .items()
-        .find((i) => i.identity === state.active())
-        ?.id()
-    );
+    const activeItem = computed(() => {
+      console.log('active', state.active());
+      return state.items().find((i) => i.identity === state.active());
+    });
+
+    state.activeDescendantId.extend(this, () => activeItem()?.id());
 
     state.tabindex.extend(this, () => (state.disabled?.() ? -1 : 0));
 

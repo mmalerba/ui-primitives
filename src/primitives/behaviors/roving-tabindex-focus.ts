@@ -41,9 +41,6 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
     super(state);
 
     state.active.extend(this, (active) => {
-      if (state.disabled?.()) {
-        return active;
-      }
       const activeItem = state.items().find((i) => i.identity === active);
       return activeItem?.disabled?.()
         ? this.getFirstActivatableItem()?.identity
@@ -70,9 +67,6 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
   }
 
   private getFirstActivatableItem() {
-    if (this.state.disabled?.()) {
-      return undefined;
-    }
     for (const item of this.state.items()) {
       if (!item.disabled?.()) {
         return item;

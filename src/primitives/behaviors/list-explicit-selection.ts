@@ -1,60 +1,61 @@
-import { computed, Signal, WritableSignal } from '@angular/core';
-import { Behavior, BehaviorEventTarget, derivedSignal } from './base';
+import { computed, Signal } from '@angular/core';
+import { Behavior } from '../base/behavior';
+import { BehaviorEventTarget } from '../base/event-dispatcher';
+import { ExtendableState } from '../base/extendable-state';
 
-export interface ListExplicitSelectionItemInputs<T> {
+export type ListExplicitSelectionItemState<T> = ExtendableState<{
   readonly identity: T;
-  readonly disabled?: Signal<boolean>;
-}
 
-export interface ListExplicitSelectionInputs<T> {
+  readonly disabled?: Signal<boolean>;
+}>;
+
+export type ListExplicitSelectionState<T> = ExtendableState<{
   readonly element: HTMLElement;
-  readonly selected: Signal<T | undefined>;
-  readonly items: Signal<readonly ListExplicitSelectionItemInputs<T>[]>;
-  readonly active: Signal<T | undefined>;
+
   readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
   readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
 
-  readonly disabled?: Signal<boolean>;
-}
-
-export interface ListExplicitSelectionState<T> {
-  selected: T | undefined;
-  disabledByState: boolean;
-}
+  readonly selected: Signal<T | undefined>;
+  readonly items: Signal<readonly ListExplicitSelectionItemState<T>[]>;
+  readonly active: Signal<T | undefined>;
+  readonly disabled: Signal<boolean>;
+}>;
 
 export class ListExplicitSelectionBehavior<T> extends Behavior<ListExplicitSelectionState<T>> {
-  readonly state: Signal<ListExplicitSelectionState<T>>;
+  private selectedItem = computed(() =>
+    this.state.items().find((item) => item.identity === this.state.selected())
+  );
 
-  private canSelectActiveItem: Signal<boolean>;
-  private selected: WritableSignal<T | undefined>;
+  private activeItem = computed(() =>
+    this.state.items().find((item) => item.identity === this.state.active())
+  );
 
-  constructor(private control: ListExplicitSelectionInputs<T>) {
-    super();
+  private canSelectActiveItem = computed(
+    () =>
+      !(
+        this.state.disabled?.() ||
+        this.selectedItem()?.disabled?.() ||
+        this.activeItem()?.disabled?.()
+      )
+  );
 
-    const activeItem = computed(() =>
-      control.items().find((item) => item.identity === control.active())
-    );
+  private selected = this.state.selected.extend(
+    this,
+    (selected) => this.state.items().find((item) => item.identity === selected)?.identity
+  );
 
-    const selectedItem = computed(() =>
-      control.items().find((item) => item.identity === control.selected())
-    );
+  constructor(state: ListExplicitSelectionState<T>) {
+    super(state);
 
-    this.selected = derivedSignal(() => selectedItem()?.identity);
+    state.disabled.extend(this, (disabled) => {
+      return disabled || this.selectedItem()?.disabled?.() || false;
+    });
 
-    this.canSelectActiveItem = computed(
-      () => !(control.disabled?.() || selectedItem()?.disabled?.() || activeItem()?.disabled?.())
-    );
-
-    this.state = computed(() => ({
-      selected: this.selected(),
-      disabledByState: selectedItem()?.disabled?.() || false,
-    }));
-
-    this.listeners.push(control.keydownEvents.listen((event) => this.handleKeydown(event)));
+    this.listeners.push(state.keydownEvents.listen((event) => this.handleKeydown(event)));
   }
 
   private handleKeydown(event: KeyboardEvent) {
-    if (this.control.disabled?.()) {
+    if (this.state.disabled?.()) {
       return;
     }
 
@@ -62,7 +63,7 @@ export class ListExplicitSelectionBehavior<T> extends Behavior<ListExplicitSelec
       case 'Enter':
       case ' ':
         if (this.canSelectActiveItem()) {
-          this.selected.set(this.control.active());
+          this.selected.set(this.state.active());
         }
         break;
     }

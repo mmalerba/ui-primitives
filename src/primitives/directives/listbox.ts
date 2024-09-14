@@ -14,6 +14,8 @@ import {
 import { EventDispatcher } from '../base/event-dispatcher';
 import { createExtendableState } from '../base/extendable-state';
 import { ActiveDescendantFocusBehavior } from '../behaviors/active-descendant-focus';
+import { ListExplicitSelectionBehavior } from '../behaviors/list-explicit-selection';
+import { ListFollowFocusSelectionBehavior } from '../behaviors/list-follow-focus-selection';
 import { ListNavigationBehavior } from '../behaviors/list-navigation';
 import { RovingTabindexFocusBehavior } from '../behaviors/roving-tabindex-focus';
 
@@ -128,12 +130,15 @@ export class Listbox {
         ? new ActiveDescendantFocusBehavior(this.uiState)
         : new RovingTabindexFocusBehavior(this.uiState)
     );
-  }); /*
-  private readonly selectionBehavior = computed(() =>
-    this.options().selectionFollowsFocus
-      ? new ListFollowFocusSelectionBehavior(this.uiState)
-      : new ListExplicitSelectionBehavior(this.uiState)
-  );*/
+  });
+  private readonly selectionBehavior = computed(() => {
+    const selectionFollowsFocus = this.options().selectionFollowsFocus;
+    return untracked(() =>
+      selectionFollowsFocus
+        ? new ListFollowFocusSelectionBehavior(this.uiState)
+        : new ListExplicitSelectionBehavior(this.uiState)
+    );
+  });
 
   constructor() {
     effect(() => {
@@ -149,10 +154,10 @@ export class Listbox {
     effect((onCleanup) => {
       const behavior = this.focusBehavior();
       onCleanup(() => behavior.remove());
-    }); /*
+    });
     effect((onCleanup) => {
       const behavior = this.selectionBehavior();
       onCleanup(() => behavior.remove());
-    });*/
+    });
   }
 }

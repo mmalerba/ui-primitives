@@ -34,7 +34,7 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
   private readonly active = this.state.active.extend(this, (value) => value);
 
   private readonly activeIndex = computed(() =>
-    this.state.items().findIndex((i) => i.identity === this.active())
+    this.state.items().findIndex((i) => i.identity === this.state.active())
   );
 
   constructor(state: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
