@@ -33,14 +33,14 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
     this.state.items().find((i) => i.identity === this.state.active())
   );
 
-  private focused = this.state.focused.extend((focused) =>
+  private focused = this.state.focused.extend(this, (focused) =>
     hasFocus(this.state.element) ? this.activeItem()?.element : focused
   );
 
   constructor(state: RovingTabindexFocusState<T>) {
     super(state);
 
-    state.active.extend((active) => {
+    state.active.extend(this, (active) => {
       if (state.disabled?.()) {
         return active;
       }
@@ -50,15 +50,15 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
         : activeItem?.identity;
     });
 
-    state.tabindex.extend(() => -1);
+    state.tabindex.extend(this, () => -1);
 
-    state.activeDescendantId.extend(() => undefined);
+    state.activeDescendantId.extend(this, () => undefined);
 
-    state.items.extend((items) =>
+    state.items.extend(this, (items) =>
       items.map((item) =>
         createExtendableState({
           ...item,
-          tabindex: item.tabindex.extend(() => (item.identity === state.active() ? 0 : -1)),
+          tabindex: item.tabindex.extend(this, () => (item.identity === state.active() ? 0 : -1)),
         })
       )
     );

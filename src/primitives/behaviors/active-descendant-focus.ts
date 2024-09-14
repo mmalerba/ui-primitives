@@ -26,32 +26,32 @@ export type ActiveDescendantFocusState<T> = ExtendableState<{
 }>;
 
 export class ActiveDescendantFocusBehavior<T> extends Behavior<ActiveDescendantFocusState<T>> {
-  private readonly focused = this.state.focused.extend((focused) =>
+  private readonly focused = this.state.focused.extend(this, (focused) =>
     !this.state.disabled?.() && hasFocus(this.state.element) ? this.state.element : focused
   );
 
   constructor(state: ActiveDescendantFocusState<T>) {
     super(state);
 
-    state.active.extend((active) => {
-      console.log('active descendant', active);
-      return state.items().find((i) => i.identity === active)?.identity;
-    });
+    state.active.extend(
+      this,
+      (active) => state.items().find((i) => i.identity === active)?.identity
+    );
 
-    state.activeDescendantId.extend(() =>
+    state.activeDescendantId.extend(this, () =>
       state
         .items()
         .find((i) => i.identity === state.active())
         ?.id()
     );
 
-    state.tabindex.extend(() => (state.disabled?.() ? -1 : 0));
+    state.tabindex.extend(this, () => (state.disabled?.() ? -1 : 0));
 
-    state.items.extend((items) =>
+    state.items.extend(this, (items) =>
       items.map((item) =>
         createExtendableState({
           ...item,
-          tabindex: item.tabindex.extend(() => -1),
+          tabindex: item.tabindex.extend(this, () => -1),
         })
       )
     );
