@@ -42,7 +42,7 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
 
     state.active.extend(this, (active) => {
       const activeItem = state.items().find((i) => i.identity === active);
-      return activeItem?.disabled?.()
+      return !activeItem || activeItem.disabled?.()
         ? this.getFirstActivatableItem()?.identity
         : activeItem?.identity;
     });

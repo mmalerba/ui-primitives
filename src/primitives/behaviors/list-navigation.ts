@@ -14,6 +14,7 @@ export type ListNavigationState<T> = ExtendableState<{
 
   readonly items: Signal<readonly ListNavigationItemState<T>[]>;
   readonly active: Signal<T | undefined>;
+  readonly activated: Signal<T | undefined>;
 
   readonly disabled?: Signal<boolean>;
   readonly orientation?: Signal<'vertical' | 'horizontal'>;
@@ -31,7 +32,7 @@ export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
 export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> {
   private readonly options: ListNavigationOptions;
 
-  private readonly active = this.state.active.extend(this, (value) => value);
+  private readonly activated = this.state.activated.extend(this, (value) => value);
 
   private readonly activeIndex = computed(() =>
     this.state.items().findIndex((i) => i.identity === this.state.active())
@@ -41,6 +42,14 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
     super(state);
 
     this.options = { ...DEFAULT_LIST_KEY_NAVIGATION_OPTIONS, ...options };
+
+    state.active.extend(this, (active) => {
+      const item = this.state
+        .items()
+        .find((item) => item.identity === (this.activated() ?? active));
+      return item?.disabled?.() ? undefined : item?.identity;
+    });
+
     this.listeners.push(state.keydownEvents.listen((event) => this.handleKeydown(event)));
   }
 
@@ -94,7 +103,7 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.state.items().length - 1)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.state.items()[nextIndex].identity);
+      this.activated.set(this.state.items()[nextIndex].identity);
     }
   }
 
@@ -108,7 +117,7 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex > 0)
     );
     if (this.canActivate(nextIndex)) {
-      this.active.set(this.state.items()[nextIndex].identity);
+      this.activated.set(this.state.items()[nextIndex].identity);
     }
   }
 

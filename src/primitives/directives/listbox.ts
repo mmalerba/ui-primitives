@@ -102,6 +102,7 @@ export class Listbox {
     disabled: computed(() => this.disabled() || this.disabledByState()),
     tabindex: signal<number | undefined>(undefined),
     active: this.active,
+    activated: signal<ListboxOption | undefined>(undefined),
     selected: this.selected,
     activeDescendantId: signal<string | undefined>(undefined),
     orientation: this.orientation,

@@ -47,9 +47,7 @@ export class ListExplicitSelectionBehavior<T> extends Behavior<ListExplicitSelec
   constructor(state: ListExplicitSelectionState<T>) {
     super(state);
 
-    state.disabled.extend(this, (disabled) => {
-      return disabled || this.selectedItem()?.disabled?.() || false;
-    });
+    state.disabled.extend(this, (disabled) => disabled || !!this.selectedItem()?.disabled?.());
 
     this.listeners.push(state.keydownEvents.listen((event) => this.handleKeydown(event)));
   }

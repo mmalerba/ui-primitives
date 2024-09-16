@@ -1,6 +1,5 @@
-import { computed, Signal, WritableSignal } from '@angular/core';
+import { computed, Signal } from '@angular/core';
 import { Behavior } from '../base/behavior';
-import { hasFocus } from '../base/dom';
 import { BehaviorEventTarget } from '../base/event-dispatcher';
 import { ExtendableState } from '../base/extendable-state';
 
@@ -18,28 +17,14 @@ export type ListFollowFocusSelectionState<T> = ExtendableState<{
 
   readonly selected: Signal<T | undefined>;
   readonly items: Signal<readonly ListFollowFocusSelectionItemState<T>[]>;
-  readonly active: Signal<T | undefined>;
+  readonly activated: Signal<T | undefined>;
   readonly disabled: Signal<boolean>;
 }>;
 
 export class ListFollowFocusSelectionBehavior<T> extends Behavior<
   ListFollowFocusSelectionState<T>
 > {
-  private disabled: WritableSignal<boolean>;
-
-  private readonly activeItem = computed(() =>
-    this.state.items().find((item) => item.identity === this.state.active())
-  );
-
-  private readonly selected = this.state.selected.extend(this, (selected) => {
-    const selectedItem = this.state.items().find((item) => item.identity === selected);
-    const canSelect = !(
-      this.disabled() ||
-      selectedItem?.disabled?.() ||
-      this.activeItem()?.disabled?.()
-    );
-    return canSelect && hasFocus(this.state.element) ? this.state.active() : selected;
-  });
+  private readonly activated = this.state.activated.extend(this, (value) => value);
 
   private readonly selectedItem = computed(() =>
     this.state.items().find((item) => item.identity === this.state.selected())
@@ -48,11 +33,9 @@ export class ListFollowFocusSelectionBehavior<T> extends Behavior<
   constructor(state: ListFollowFocusSelectionState<T>) {
     super(state);
 
-    this.disabled = this.state.disabled.extend(this, (disabled) => disabled);
+    state.selected.extend(this, (selected) => state.activated() ?? selected);
 
-    state.disabled.extend(this, (disabled) => {
-      return disabled || this.selectedItem()?.disabled?.() || false;
-    });
+    state.disabled.extend(this, (disabled) => disabled || !!this.selectedItem()?.disabled?.());
 
     this.listeners.push(state.focusinEvents.listen(() => this.handleFocusin()));
   }
@@ -61,6 +44,6 @@ export class ListFollowFocusSelectionBehavior<T> extends Behavior<
     if (this.state.disabled?.()) {
       return;
     }
-    this.selected.set(this.state.active());
+    this.activated.set(this.state.selected());
   }
 }

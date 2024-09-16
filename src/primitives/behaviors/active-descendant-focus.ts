@@ -33,15 +33,7 @@ export class ActiveDescendantFocusBehavior<T> extends Behavior<ActiveDescendantF
   constructor(state: ActiveDescendantFocusState<T>) {
     super(state);
 
-    state.active.extend(this, (active) => {
-      const item = state.items().find((i) => i.identity === active);
-      return item?.disabled?.() ? undefined : item?.identity;
-    });
-
-    const activeItem = computed(() => {
-      console.log('active', state.active());
-      return state.items().find((i) => i.identity === state.active());
-    });
+    const activeItem = computed(() => state.items().find((i) => i.identity === state.active()));
 
     state.activeDescendantId.extend(this, () => activeItem()?.id());
 
