@@ -12,7 +12,7 @@ export function linkedSignal(fnOrSpec: any): WritableSignal<any> {
   let previous: { source: any; value: any } | undefined = undefined;
   const c = computed(() => {
     const nextSource = source();
-    const nextValue = untracked(() => computation(nextSource, previous));
+    const nextValue = computation(nextSource, previous);
     previous = { source: nextSource, value: nextValue };
     return signal(nextValue);
   });

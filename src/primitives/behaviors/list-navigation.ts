@@ -1,25 +1,27 @@
-import { computed, Signal } from '@angular/core';
+import { computed, Signal, WritableSignal } from '@angular/core';
 import { Behavior } from '../base/behavior';
-import { BehaviorEventTarget } from '../base/event-dispatcher';
-import { ExtendableState } from '../base/extendable-state';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { PatchableSignal } from '../base/patchable-signal';
 
-export type ListNavigationItemState<T> = ExtendableState<{
-  readonly identity: T;
-
-  readonly disabled?: Signal<boolean>;
-}>;
-
-export type ListNavigationState<T> = ExtendableState<{
-  readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
-
-  readonly items: Signal<readonly ListNavigationItemState<T>[]>;
-  readonly active: Signal<T | undefined>;
-  readonly activated: Signal<T | undefined>;
+export interface ListNavigationItemState<I> {
+  readonly identity: I;
 
   readonly disabled?: Signal<boolean>;
-  readonly orientation?: Signal<'vertical' | 'horizontal'>;
-  readonly direction?: Signal<'ltr' | 'rtl'>;
-}>;
+}
+
+export type ListNavigationState<T> = T extends ListNavigationItemState<infer I>
+  ? {
+      readonly keydownEvents: EventDispatcher<KeyboardEvent>;
+
+      readonly active: PatchableSignal<I | undefined>;
+      readonly activated: PatchableSignal<I | undefined>;
+
+      readonly items: Signal<readonly T[]>;
+      readonly disabled?: Signal<boolean>;
+      readonly orientation?: Signal<'vertical' | 'horizontal'>;
+      readonly direction?: Signal<'ltr' | 'rtl'>;
+    }
+  : never;
 
 export interface ListNavigationOptions {
   readonly wrap: boolean;
@@ -32,50 +34,60 @@ export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
 export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> {
   private readonly options: ListNavigationOptions;
 
-  private readonly activated = this.state.activated.extend(this, (value) => value);
-
-  private readonly activeIndex = computed(() =>
-    this.state.items().findIndex((i) => i.identity === this.state.active())
-  );
-
   constructor(state: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
     super(state);
-
     this.options = { ...DEFAULT_LIST_KEY_NAVIGATION_OPTIONS, ...options };
-
-    state.active.extend(this, (active) => {
-      const item = this.state
-        .items()
-        .find((item) => item.identity === (this.activated() ?? active));
-      return item?.disabled?.() ? undefined : item?.identity;
-    });
-
-    this.listeners.push(state.keydownEvents.listen((event) => this.handleKeydown(event)));
   }
 
-  private handleKeydown(event: KeyboardEvent) {
+  init() {
+    const activated = this.state.activated.patch((value) => value, {
+      connected: this.connected,
+    });
+
+    const activeIndex = computed(() =>
+      this.state.items().findIndex((i) => i.identity === this.state.active())
+    );
+
+    this.state.active.patch(
+      (active) => {
+        const item = this.state.items().find((item) => item.identity === (activated() ?? active));
+        return item?.disabled?.() ? undefined : item?.identity;
+      },
+      { connected: this.connected }
+    );
+
+    this.state.keydownEvents
+      .target(this.connected)
+      .listen((event) => this.handleKeydown(event, activeIndex, activated));
+  }
+
+  private handleKeydown(
+    event: KeyboardEvent,
+    activeIndex: Signal<number>,
+    activated: WritableSignal<unknown>
+  ) {
     const orientation = this.state.orientation?.() ?? 'vertical';
     const direction = this.state.direction?.() ?? 'ltr';
 
     switch (event.key) {
       case 'ArrowDown':
         if (orientation === 'vertical') {
-          this.activateNextItem();
+          this.activateNextItem(activeIndex, activated);
           event.preventDefault();
         }
         break;
       case 'ArrowUp':
         if (orientation === 'vertical') {
-          this.activatePreviousItem();
+          this.activatePreviousItem(activeIndex, activated);
           event.preventDefault();
         }
         break;
       case 'ArrowRight':
         if (orientation === 'horizontal') {
           if (direction === 'ltr') {
-            this.activateNextItem();
+            this.activateNextItem(activeIndex, activated);
           } else {
-            this.activatePreviousItem();
+            this.activatePreviousItem(activeIndex, activated);
           }
           event.preventDefault();
         }
@@ -83,9 +95,9 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       case 'ArrowLeft':
         if (orientation === 'horizontal') {
           if (direction === 'ltr') {
-            this.activatePreviousItem();
+            this.activatePreviousItem(activeIndex, activated);
           } else {
-            this.activateNextItem();
+            this.activateNextItem(activeIndex, activated);
           }
           event.preventDefault();
         }
@@ -93,8 +105,8 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
     }
   }
 
-  private activateNextItem() {
-    const currentIndex = this.activeIndex();
+  private activateNextItem(activeIndex: Signal<number>, activated: WritableSignal<unknown>) {
+    const currentIndex = activeIndex();
     let nextIndex = currentIndex;
     do {
       nextIndex = this.clampIndex(nextIndex + 1);
@@ -103,12 +115,12 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.state.items().length - 1)
     );
     if (this.canActivate(nextIndex)) {
-      this.activated.set(this.state.items()[nextIndex].identity);
+      activated.set(this.state.items()[nextIndex].identity);
     }
   }
 
-  private activatePreviousItem() {
-    const currentIndex = this.activeIndex();
+  private activatePreviousItem(activeIndex: Signal<number>, activated: WritableSignal<unknown>) {
+    const currentIndex = activeIndex();
     let nextIndex = currentIndex;
     do {
       nextIndex = this.clampIndex(nextIndex - 1);
@@ -117,7 +129,7 @@ export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> 
       (this.options.wrap ? nextIndex !== currentIndex : nextIndex > 0)
     );
     if (this.canActivate(nextIndex)) {
-      this.activated.set(this.state.items()[nextIndex].identity);
+      activated.set(this.state.items()[nextIndex].identity);
     }
   }
 

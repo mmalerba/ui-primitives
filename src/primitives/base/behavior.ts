@@ -1,17 +1,26 @@
 import { signal, untracked } from '@angular/core';
-import { ExtendableState } from './extendable-state';
 
-export class Behavior<T extends ExtendableState<object> = ExtendableState> {
-  readonly removed = signal(false);
+export abstract class Behavior<S> {
+  readonly connected = signal(false);
+  initialized = false;
 
-  protected readonly listeners: VoidFunction[] = [];
+  constructor(protected readonly state: S) {}
 
-  constructor(protected readonly state: T) {}
-
-  remove() {
-    untracked(() => this.removed.set(true));
-    for (const unlisten of this.listeners) {
-      unlisten();
-    }
+  connect() {
+    untracked(() => {
+      this.connected.set(true);
+      if (!this.initialized) {
+        this.init();
+        this.initialized = true;
+      }
+    });
   }
+
+  disconnect() {
+    untracked(() => {
+      this.connected.set(false);
+    });
+  }
+
+  abstract init(): void;
 }

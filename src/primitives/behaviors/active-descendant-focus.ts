@@ -1,60 +1,75 @@
-import { computed, Signal } from '@angular/core';
+import { computed, Signal, untracked, WritableSignal } from '@angular/core';
 import { Behavior } from '../base/behavior';
 import { hasFocus } from '../base/dom';
-import { BehaviorEventTarget } from '../base/event-dispatcher';
-import { createExtendableState, ExtendableState } from '../base/extendable-state';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { PatchableSignal } from '../base/patchable-signal';
+import { withPrevious } from '../base/with-previous';
 
-export type ActiveDescendantFocusItemState<T> = ExtendableState<{
-  readonly identity: T;
+export interface ActiveDescendantFocusItemState<I> {
+  readonly identity: I;
+
+  readonly tabindex: PatchableSignal<number | undefined>;
 
   readonly id: Signal<string>;
-  readonly tabindex: Signal<number | undefined>;
   readonly disabled?: Signal<boolean>;
-}>;
+}
 
-export type ActiveDescendantFocusState<T> = ExtendableState<{
-  readonly element: HTMLElement;
+export type ActiveDescendantFocusState<T> = T extends ActiveDescendantFocusItemState<infer I>
+  ? {
+      readonly element: HTMLElement;
 
-  readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
+      readonly focusinEvents: EventDispatcher<FocusEvent>;
 
-  readonly items: Signal<ActiveDescendantFocusItemState<T>[]>;
-  readonly tabindex: Signal<number | undefined>;
-  readonly active: Signal<T | undefined>;
-  readonly activeDescendantId: Signal<string | undefined>;
-  readonly focused: Signal<HTMLElement | undefined>;
-  readonly disabled?: Signal<boolean>;
-}>;
+      readonly items: PatchableSignal<T[]>;
+      readonly tabindex: PatchableSignal<number | undefined>;
+      readonly activeDescendantId: PatchableSignal<string | undefined>;
+      readonly focused: PatchableSignal<{ element: HTMLElement } | undefined>;
+
+      readonly active: Signal<I | undefined>;
+      readonly disabled?: Signal<boolean>;
+    }
+  : never;
 
 export class ActiveDescendantFocusBehavior<T> extends Behavior<ActiveDescendantFocusState<T>> {
-  private readonly focused = this.state.focused.extend(this, (focused) =>
-    !this.state.disabled?.() && hasFocus(this.state.element) ? this.state.element : focused
-  );
-
-  constructor(state: ActiveDescendantFocusState<T>) {
-    super(state);
-
-    const activeItem = computed(() => state.items().find((i) => i.identity === state.active()));
-
-    state.activeDescendantId.extend(this, () => activeItem()?.id());
-
-    state.tabindex.extend(this, () => (state.disabled?.() ? -1 : 0));
-
-    state.items.extend(this, (items) =>
-      items.map((item) =>
-        createExtendableState({
-          ...item,
-          tabindex: item.tabindex.extend(this, () => -1),
-        })
-      )
+  init() {
+    const focused = this.state.focused.patch(
+      (focused) =>
+        !this.state.disabled?.() && hasFocus(this.state.element)
+          ? { element: this.state.element }
+          : focused,
+      { connected: this.connected }
     );
 
-    this.listeners.push(state.focusinEvents.listen(() => this.handleFocusin()));
+    const activeItem = computed(() =>
+      this.state.items().find((i) => i.identity === this.state.active())
+    );
+
+    this.state.activeDescendantId.patch(() => activeItem()?.id(), { connected: this.connected });
+
+    this.state.tabindex.patch(() => (this.state.disabled?.() ? -1 : 0), {
+      connected: this.connected,
+    });
+
+    this.state.items.patch(
+      withPrevious((previous, items) => {
+        const previousIdentities = new Set(previous?.map((i) => i.identity) ?? []);
+        for (const item of items) {
+          if (!previousIdentities.has(item.identity)) {
+            untracked(() => item.tabindex.patch(() => -1, { connected: this.connected }));
+          }
+        }
+        return items;
+      }),
+      { connected: this.connected }
+    );
+
+    this.state.focusinEvents.target(this.connected).listen(() => this.handleFocusin(focused));
   }
 
-  private handleFocusin() {
+  private handleFocusin(focused: WritableSignal<{ element: HTMLElement } | undefined>) {
     if (this.state.disabled?.()) {
       return;
     }
-    this.focused.set(this.state.element);
+    focused.set({ element: this.state.element });
   }
 }

@@ -1,69 +1,85 @@
-import { computed, Signal } from '@angular/core';
+import { computed, Signal, untracked, WritableSignal } from '@angular/core';
 import { Behavior } from '../base/behavior';
 import { hasFocus } from '../base/dom';
-import { BehaviorEventTarget } from '../base/event-dispatcher';
-import { createExtendableState, ExtendableState } from '../base/extendable-state';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { PatchableSignal } from '../base/patchable-signal';
+import { withPrevious } from '../base/with-previous';
 
-export type RovingTabindexFocusItemState<T> = ExtendableState<{
-  readonly identity: T;
+export interface RovingTabindexFocusItemState<I> {
+  readonly identity: I;
   readonly element: HTMLElement;
 
-  readonly tabindex: Signal<number | undefined>;
+  readonly tabindex: PatchableSignal<number | undefined>;
 
   readonly disabled?: Signal<boolean>;
-}>;
+}
 
-export type RovingTabindexFocusState<T> = ExtendableState<{
-  readonly element: HTMLElement;
+export type RovingTabindexFocusState<T> = T extends RovingTabindexFocusItemState<infer I>
+  ? {
+      readonly element: HTMLElement;
 
-  readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
-  readonly focusoutEvents: BehaviorEventTarget<FocusEvent>;
+      readonly focusinEvents: EventDispatcher<FocusEvent>;
+      readonly focusoutEvents: EventDispatcher<FocusEvent>;
 
-  readonly items: Signal<readonly RovingTabindexFocusItemState<T>[]>;
-  readonly active: Signal<T | undefined>;
-  readonly tabindex: Signal<number | undefined>;
-  readonly focused: Signal<HTMLElement | undefined>;
-  readonly activeDescendantId: Signal<string | undefined>;
+      readonly items: PatchableSignal<T[]>;
+      readonly focused: PatchableSignal<{ element: HTMLElement } | undefined>;
+      readonly active: PatchableSignal<I | undefined>;
+      readonly tabindex: PatchableSignal<number | undefined>;
+      readonly activeDescendantId: PatchableSignal<string | undefined>;
 
-  readonly disabled?: Signal<boolean>;
-}>;
+      readonly disabled?: Signal<boolean>;
+    }
+  : never;
 
 export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocusState<T>> {
-  private activeItem = computed(() =>
-    this.state.items().find((i) => i.identity === this.state.active())
-  );
-
-  private focused = this.state.focused.extend(this, (focused) =>
-    hasFocus(this.state.element) ? this.activeItem()?.element : focused
-  );
-
-  constructor(state: RovingTabindexFocusState<T>) {
-    super(state);
-
-    state.active.extend(this, (active) => {
-      const activeItem = state.items().find((i) => i.identity === active);
-      return !activeItem || activeItem.disabled?.()
-        ? this.getFirstActivatableItem()?.identity
-        : activeItem?.identity;
-    });
-
-    state.tabindex.extend(this, () => -1);
-
-    state.activeDescendantId.extend(this, () => undefined);
-
-    state.items.extend(this, (items) =>
-      items.map((item) =>
-        createExtendableState({
-          ...item,
-          tabindex: item.tabindex.extend(this, () => (item.identity === state.active() ? 0 : -1)),
-        })
-      )
+  init() {
+    const activeItem = computed(() =>
+      this.state.items().find((i) => i.identity === this.state.active())
     );
 
-    this.listeners.push(
-      state.focusinEvents.listen(() => this.handleFocusin()),
-      state.focusoutEvents.listen((e) => this.handleFocusout(e))
+    const focused = this.state.focused.patch(
+      (focused) => {
+        const element = activeItem()?.element;
+        return hasFocus(this.state.element) ? element && { element } : focused;
+      },
+      { connected: this.connected }
     );
+
+    this.state.active.patch(
+      (active) => {
+        const activeItem = this.state.items().find((i) => i.identity === active);
+        return !activeItem || activeItem.disabled?.()
+          ? this.getFirstActivatableItem()?.identity
+          : activeItem?.identity;
+      },
+      { connected: this.connected }
+    );
+
+    this.state.tabindex.patch(() => -1, { connected: this.connected });
+
+    this.state.activeDescendantId.patch(() => undefined, { connected: this.connected });
+
+    this.state.items.patch(
+      withPrevious((previous, items) => {
+        const previousIdentities = new Set(previous?.map((i) => i.identity) ?? []);
+        for (const item of items) {
+          if (!previousIdentities.has(item.identity)) {
+            untracked(() =>
+              item.tabindex.patch(() => (item.identity === this.state.active() ? 0 : -1), {
+                connected: this.connected,
+              })
+            );
+          }
+        }
+        return items;
+      }),
+      { connected: this.connected }
+    );
+
+    this.state.focusinEvents
+      .target(this.connected)
+      .listen(() => this.handleFocusin(activeItem, focused));
+    this.state.focusoutEvents.target(this.connected).listen((e) => this.handleFocusout(e, focused));
   }
 
   private getFirstActivatableItem() {
@@ -75,17 +91,25 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
     return undefined;
   }
 
-  private handleFocusin() {
+  private handleFocusin(
+    activeItem: Signal<RovingTabindexFocusItemState<unknown> | undefined>,
+    focused: WritableSignal<{ element: HTMLElement } | undefined>
+  ) {
     if (this.state.disabled?.()) {
       return;
     }
-    this.focused.set(this.activeItem()?.element);
+    const element = activeItem()?.element;
+    focused.set(element && { element });
   }
 
-  private handleFocusout(e: FocusEvent) {
+  private handleFocusout(
+    e: FocusEvent,
+    focused: WritableSignal<{ element: HTMLElement } | undefined>
+  ) {
     const targetRemoved = !this.state.items().some((item) => item.element === e.target);
     if (targetRemoved) {
-      this.focused.set(this.getFirstActivatableItem()?.element);
+      const element = this.getFirstActivatableItem()?.element;
+      focused.set(element && { element });
     }
   }
 }
