@@ -65,9 +65,12 @@ export class RovingTabindexFocusBehavior<T> extends Behavior<RovingTabindexFocus
         for (const item of items) {
           if (!previousIdentities.has(item.identity)) {
             untracked(() =>
-              item.tabindex.patch(() => (item.identity === this.state.active() ? 0 : -1), {
-                connected: this.connected,
-              })
+              item.tabindex.patch(
+                () => (!this.state.disabled?.() && item.identity === this.state.active() ? 0 : -1),
+                {
+                  connected: this.connected,
+                }
+              )
             );
           }
         }
