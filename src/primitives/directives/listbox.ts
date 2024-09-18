@@ -8,10 +8,10 @@ import {
   inject,
   Injector,
   input,
-  signal,
 } from '@angular/core';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { patchableSignal } from '../base/patchable-signal';
 import { ActiveDescendantFocusBehavior } from '../behaviors/active-descendant-focus';
-import { derivedSignal, EventDispatcher } from '../behaviors/base';
 import { ListExplicitSelectionBehavior } from '../behaviors/list-explicit-selection';
 import { ListFollowFocusSelectionBehavior } from '../behaviors/list-follow-focus-selection';
 import { ListNavigationBehavior } from '../behaviors/list-navigation';
@@ -42,8 +42,8 @@ let nextId = 0;
     '[id]': 'uiState.id()',
     '[attr.disabled]': 'uiState.disabled()',
     '[attr.tabindex]': 'uiState.tabindex()',
-    '[attr.aria-selected]': 'uiState.selected()',
-    '[class.active]': 'uiState.active()',
+    '[attr.aria-selected]': 'listbox.uiState.selected() === this',
+    '[class.active]': 'listbox.uiState.active() === this',
   },
 })
 export class ListboxOption {
@@ -57,11 +57,11 @@ export class ListboxOption {
   readonly uiState = {
     identity: this as ListboxOption,
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
+
+    tabindex: patchableSignal<number | undefined>(() => undefined),
+
     disabled: this.disabled,
-    tabindex: signal<number | undefined>(undefined),
     id: this.id,
-    active: computed((): boolean => this.listbox.uiState.active() === this),
-    selected: computed((): boolean => this.listbox.uiState.selected() === this),
   };
 }
 
@@ -93,85 +93,57 @@ export class Listbox {
   readonly items = contentChildren(ListboxOption);
 
   // Set up our internal state.
-  private readonly disabledByState = signal(false);
   readonly uiState = {
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
-    disabledByState: this.disabledByState,
-    disabled: computed(() => this.disabled() || this.disabledByState()),
-    tabindex: signal<number | undefined>(undefined),
-    active: derivedSignal<ListboxOption | undefined>(() => this.active()),
-    selected: derivedSignal<ListboxOption | undefined>(() => this.selected()),
-    activeDescendantId: signal<string | undefined>(undefined),
+
+    active: patchableSignal(this.active),
+    activated: patchableSignal<ListboxOption | undefined>(() => undefined),
+    tabindex: patchableSignal<number | undefined>(() => undefined),
+    focused: patchableSignal<{ element: HTMLElement } | undefined>(() => undefined),
+    activeDescendantId: patchableSignal<string | undefined>(() => undefined),
+    items: patchableSignal(computed(() => this.items().map((item) => item.uiState))),
+    disabled: patchableSignal(this.disabled),
+    selected: patchableSignal(this.selected),
+
     orientation: this.orientation,
     direction: this.directionality,
-    items: computed(() => this.items().map((item) => item.uiState)),
+
     keydownEvents: new EventDispatcher<KeyboardEvent>(),
     focusinEvents: new EventDispatcher<FocusEvent>(),
     focusoutEvents: new EventDispatcher<FocusEvent>(),
   };
 
-  // Attach behaviors to the state.
-  private readonly navigationBehavior = computed(
-    () =>
-      new ListNavigationBehavior(this.uiState, {
-        wrap: this.options().wrapKeyNavigation,
-      })
-  );
-  private readonly focusBehavior = computed(() =>
+  // Create behaviors based on the selected options.
+  private readonly behaviors = computed(() => [
+    new ListNavigationBehavior(this.uiState, {
+      wrap: this.options().wrapKeyNavigation,
+    }),
     this.options().useActiveDescendant
       ? new ActiveDescendantFocusBehavior(this.uiState)
-      : new RovingTabindexFocusBehavior(this.uiState)
-  );
-  private readonly selectionBehavior = computed(() =>
+      : new RovingTabindexFocusBehavior(this.uiState),
     this.options().selectionFollowsFocus
       ? new ListFollowFocusSelectionBehavior(this.uiState)
-      : new ListExplicitSelectionBehavior(this.uiState)
-  );
+      : new ListExplicitSelectionBehavior(this.uiState),
+  ]);
 
   constructor() {
-    // Sync our behavior state back to our internal state.
-    effect(
-      () => {
-        const { selected, disabledByState } = this.selectionBehavior().state();
-        this.uiState.selected.set(selected);
-        this.uiState.disabledByState.set(disabledByState);
-      },
-      { allowSignalWrites: true }
-    );
-    effect(
-      () => {
-        const { active } = this.navigationBehavior().state();
-        this.uiState.active.set(active);
-      },
-      { allowSignalWrites: true }
-    );
-    effect(
-      () => {
-        const { tabindex, active, activeDescendantId, items, focused } =
-          this.focusBehavior().state();
-        this.uiState.tabindex.set(tabindex);
-        this.uiState.active.set(active);
-        this.uiState.activeDescendantId.set(activeDescendantId);
-        for (const [item, { tabindex }] of items) {
-          item.uiState.tabindex.set(tabindex);
+    // Connect / disconnect the active behaviors.
+    effect((onCleanup) => {
+      const behaviors = this.behaviors();
+      for (const behavior of behaviors) {
+        behavior.connect();
+      }
+      onCleanup(() => {
+        for (const behavior of behaviors) {
+          behavior.disconnect();
         }
-        afterNextRender(() => focused?.focus(), { injector: this.injector });
-      },
-      { allowSignalWrites: true }
-    );
+      });
+    });
 
-    // Clean up our behaviors when they change.
-    effect((onCleanup) => {
-      const behavior = this.navigationBehavior();
-      onCleanup(() => behavior.remove());
-    });
-    effect((onCleanup) => {
-      const behavior = this.focusBehavior();
-      onCleanup(() => behavior.remove());
-    });
-    effect((onCleanup) => {
-      const behavior = this.selectionBehavior();
-      onCleanup(() => behavior.remove());
+    // Sync the focused state to the DOM.
+    effect(() => {
+      this.uiState.focused();
+      afterNextRender(() => this.uiState.focused()?.element.focus(), { injector: this.injector });
     });
   }
 }

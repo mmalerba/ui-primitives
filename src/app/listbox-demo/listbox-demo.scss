@@ -1,3 +1,7 @@
+li::marker {
+  color: transparent;
+}
+
 .active {
   background: rgba(0, 0, 0, 0.1);
 }
@@ -10,11 +14,22 @@ ul:focus-within .active {
   opacity: 0.5;
 }
 
-[aria-selected="true"] {
-  color: white;
-  background: rgba(0, 0, 0, 0.5);
+[aria-selected="true"],
+ul:focus-within [aria-selected="true"] {
+  color: blue;
+  font-weight: bold;
+
+  &::marker {
+    color: blue;
+  }
 }
 
-ul:focus-within [aria-selected="true"] {
-  background: blue;
+.command-target::before {
+  position: absolute;
+  left: 10px;
+  content: ">";
+}
+
+.command {
+  background: yellow;
 }

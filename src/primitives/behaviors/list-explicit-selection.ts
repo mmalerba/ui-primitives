@@ -1,68 +1,69 @@
 import { computed, Signal, WritableSignal } from '@angular/core';
-import { Behavior, BehaviorEventTarget, derivedSignal } from './base';
+import { Behavior } from '../base/behavior';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { PatchableSignal } from '../base/patchable-signal';
 
-export interface ListExplicitSelectionItemInputs<T> {
-  readonly identity: T;
-  readonly disabled?: Signal<boolean>;
-}
-
-export interface ListExplicitSelectionInputs<T> {
-  readonly element: HTMLElement;
-  readonly selected: Signal<T | undefined>;
-  readonly items: Signal<readonly ListExplicitSelectionItemInputs<T>[]>;
-  readonly active: Signal<T | undefined>;
-  readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
-  readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
+export interface ListExplicitSelectionItemState<I> {
+  readonly identity: I;
 
   readonly disabled?: Signal<boolean>;
 }
 
-export interface ListExplicitSelectionState<T> {
-  selected: T | undefined;
-  disabledByState: boolean;
-}
+export type ListExplicitSelectionState<T> = T extends ListExplicitSelectionItemState<infer I>
+  ? {
+      readonly element: HTMLElement;
+
+      readonly keydownEvents: EventDispatcher<KeyboardEvent>;
+
+      readonly selected: PatchableSignal<I | undefined>;
+      readonly disabled: PatchableSignal<boolean>;
+
+      readonly items: Signal<T[]>;
+      readonly active: Signal<I | undefined>;
+    }
+  : never;
 
 export class ListExplicitSelectionBehavior<T> extends Behavior<ListExplicitSelectionState<T>> {
-  readonly state: Signal<ListExplicitSelectionState<T>>;
-
-  private canSelectActiveItem: Signal<boolean>;
-  private selected: WritableSignal<T | undefined>;
-
-  constructor(private control: ListExplicitSelectionInputs<T>) {
-    super();
+  init() {
+    const selectedItem = computed(() =>
+      this.state.items().find((item) => item.identity === this.state.selected())
+    );
 
     const activeItem = computed(() =>
-      control.items().find((item) => item.identity === control.active())
+      this.state.items().find((item) => item.identity === this.state.active())
     );
 
-    const selectedItem = computed(() =>
-      control.items().find((item) => item.identity === control.selected())
+    const canSelectActiveItem = computed(
+      () => !(this.state.disabled?.() || selectedItem()?.disabled?.() || activeItem()?.disabled?.())
     );
 
-    this.selected = derivedSignal(() => selectedItem()?.identity);
+    const selected = this.state.selected.patch((selected) => selected, {
+      connected: this.connected,
+    });
 
-    this.canSelectActiveItem = computed(
-      () => !(control.disabled?.() || selectedItem()?.disabled?.() || activeItem()?.disabled?.())
-    );
+    this.state.disabled.patch((disabled) => disabled || !!selectedItem()?.disabled?.(), {
+      connected: this.connected,
+    });
 
-    this.state = computed(() => ({
-      selected: this.selected(),
-      disabledByState: selectedItem()?.disabled?.() || false,
-    }));
-
-    this.listeners.push(control.keydownEvents.listen((event) => this.handleKeydown(event)));
+    this.state.keydownEvents
+      .target(this.connected)
+      .listen((event) => this.handleKeydown(event, canSelectActiveItem, selected));
   }
 
-  private handleKeydown(event: KeyboardEvent) {
-    if (this.control.disabled?.()) {
+  private handleKeydown(
+    event: KeyboardEvent,
+    canSelectActiveItem: Signal<boolean>,
+    selected: WritableSignal<unknown>
+  ) {
+    if (this.state.disabled?.()) {
       return;
     }
 
     switch (event.key) {
       case 'Enter':
       case ' ':
-        if (this.canSelectActiveItem()) {
-          this.selected.set(this.control.active());
+        if (canSelectActiveItem()) {
+          selected.set(this.state.active());
         }
         break;
     }

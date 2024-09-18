@@ -4,21 +4,27 @@
 </p>
 <p>Press 'w' to toggle key navigation wrapping: <b>{{wrap() ? 'wrap' : 'no wrap'}}</b></p>
 <p>
-  Press 'm' to toggle multiple selection:
-  <b>{{multiple() ? 'multiple' : 'single'}}</b>
-</p>
-<p>
   Press 's' to toggle single selection interaction style:
   <b>{{selectionFollowsFocus() ? 'selection follows focus' : 'explicit'}}</b>
 </p>
-<p>Press 'r' to remove the active item</p>
-<p>Press 'd' to disable the active item</p>
-<p>Press 0-9 to add an item at that index</p>
-<p>Press ctrl + 0-9 to remove an item at that index</p>
-<ul tbd-listbox [options]="options()">
-  @for (item of items(); track item) {
-  <li tbd-listbox-option #option="ListboxOption" [disabled]="disabled().has(option)">
-    <span>{{ item }}</span>
+<p>Press 'o' to toggle disabled state of the overall listbox</p>
+<p>Type an index number to target a command at that item</p>
+<p>Press 'c' to clear the targeted index</p>
+<p>Press 'a' to add an item before the targeted index</p>
+<p>Press 'r' to remove item at the targeted index</p>
+<p>Press 'd' to toggle disabled state of the item at the targeted index</p>
+<ul tbd-listbox [options]="options()" [disabled]="overallDisabled()">
+  @for (item of items(); track item; let i = $index) {
+  <li
+    tbd-listbox-option
+    #option="ListboxOption"
+    [disabled]="disabled().has(option)"
+    [class.command-target]="cmdIndex() === i"
+  >
+    <span>{{i}}) {{ item }}</span>
   </li>
   }
 </ul>
+@if (cmd()) {
+<p class="command">Selected for command: {{cmd()}}</p>
+}

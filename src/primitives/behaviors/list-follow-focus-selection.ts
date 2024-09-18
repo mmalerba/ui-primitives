@@ -1,68 +1,55 @@
 import { computed, Signal, WritableSignal } from '@angular/core';
-import { Behavior, BehaviorEventTarget, derivedSignal, hasFocus } from './base';
+import { Behavior } from '../base/behavior';
+import { EventDispatcher } from '../base/event-dispatcher';
+import { PatchableSignal } from '../base/patchable-signal';
 
-export interface ListFollowFocusSelectionItemInputs<T> {
-  readonly identity: T;
-  readonly disabled?: Signal<boolean>;
-}
-
-export interface ListFollowFocusSelectionInputs<T> {
-  readonly element: HTMLElement;
-  readonly selected: Signal<T | undefined>;
-  readonly items: Signal<readonly ListFollowFocusSelectionItemInputs<T>[]>;
-  readonly active: Signal<T | undefined>;
-  readonly keydownEvents: BehaviorEventTarget<KeyboardEvent>;
-  readonly focusinEvents: BehaviorEventTarget<FocusEvent>;
+export type ListFollowFocusSelectionItemState<I> = {
+  readonly identity: I;
 
   readonly disabled?: Signal<boolean>;
-}
+};
 
-export interface ListFollowFocusSelectionState<T> {
-  selected: T | undefined;
-  disabledByState: boolean;
-}
+export type ListFollowFocusSelectionState<T> = T extends ListFollowFocusSelectionItemState<infer I>
+  ? {
+      readonly element: HTMLElement;
+
+      readonly focusinEvents: EventDispatcher<FocusEvent>;
+
+      readonly activated: PatchableSignal<I | undefined>;
+      readonly selected: PatchableSignal<I | undefined>;
+      readonly disabled: PatchableSignal<boolean>;
+
+      readonly items: Signal<T[]>;
+    }
+  : never;
 
 export class ListFollowFocusSelectionBehavior<T> extends Behavior<
   ListFollowFocusSelectionState<T>
 > {
-  readonly state: Signal<ListFollowFocusSelectionState<T>>;
-
-  private readonly selected: WritableSignal<T | undefined>;
-
-  constructor(private control: ListFollowFocusSelectionInputs<T>) {
-    super();
-
-    const activeItem = computed(() =>
-      control.items().find((item) => item.identity === control.active())
-    );
-
+  init() {
     const selectedItem = computed(() =>
-      control.items().find((item) => item.identity === control.selected())
+      this.state.items().find((item) => item.identity === this.state.selected())
     );
 
-    const canSelectActiveItem = computed(
-      () => !(control.disabled?.() || selectedItem()?.disabled?.() || activeItem()?.disabled?.())
-    );
-
-    this.selected = derivedSignal(() => {
-      const canSelect = canSelectActiveItem();
-      const active = control.active();
-      const selected = selectedItem();
-      return canSelect && hasFocus(control.element) ? active : selected?.identity;
+    const activated = this.state.activated.patch((value) => value, {
+      connected: this.connected,
     });
 
-    this.state = computed(() => ({
-      selected: this.selected(),
-      disabledByState: selectedItem()?.disabled?.() || false,
-    }));
+    this.state.selected.patch((selected) => this.state.activated() ?? selected, {
+      connected: this.connected,
+    });
 
-    this.listeners.push(control.focusinEvents.listen(() => this.handleFocusin()));
+    this.state.disabled.patch((disabled) => disabled || !!selectedItem()?.disabled?.(), {
+      connected: this.connected,
+    });
+
+    this.state.focusinEvents.target(this.connected).listen(() => this.handleFocusin(activated));
   }
 
-  private handleFocusin() {
-    if (this.control.disabled?.()) {
+  private handleFocusin(activated: WritableSignal<unknown>) {
+    if (this.state.disabled?.()) {
       return;
     }
-    this.selected.set(this.control.active());
+    activated.set(this.state.selected());
   }
 }

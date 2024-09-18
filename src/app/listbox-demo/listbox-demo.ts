@@ -18,19 +18,21 @@ export class ListboxDemo {
   wrap = signal(false);
   useActiveDescendant = signal(true);
   selectionFollowsFocus = signal(true);
-  multiple = signal(false);
   options = computed(() => ({
     wrapKeyNavigation: this.wrap(),
     useActiveDescendant: this.useActiveDescendant(),
     selectionFollowsFocus: this.selectionFollowsFocus(),
-    multiple: this.multiple(),
   }));
-  items = signal(Array.from({ length: 10 }, (_, i) => `item-${i}`));
+  items = signal(Array.from({ length: 10 }, (_, i) => `item-${nextItem++}`));
   listbox = viewChild.required(Listbox);
   disabled = signal<Set<ListboxOption>>(new Set());
+  overallDisabled = signal(false);
+  cmd = signal('');
+  cmdIndex = computed(() => (this.cmd() ? Number(this.cmd()) : null));
 
   handleKeydown(event: KeyboardEvent) {
     const active = this.listbox().uiState.active();
+    const cmdIndex = this.cmdIndex() ?? (active ? this.listbox().items().indexOf(active) : null);
     switch (event.key) {
       case 'f':
         this.useActiveDescendant.update((useActiveDescendant) => !useActiveDescendant);
@@ -38,27 +40,42 @@ export class ListboxDemo {
       case 'w':
         this.wrap.update((wrap) => !wrap);
         break;
-      case 'm':
-        this.multiple.update((multiple) => !multiple);
-        break;
       case 's':
         this.selectionFollowsFocus.update((selectionFollowsFocus) => !selectionFollowsFocus);
         break;
-      case 'r':
-        if (active) {
+      case 'o':
+        this.overallDisabled.update((compositeDisabled) => !compositeDisabled);
+        break;
+      case 'a':
+        if (cmdIndex !== null) {
           this.items.update((items) => {
-            items.splice(this.listbox().items().indexOf(active), 1);
+            items.splice(cmdIndex, 0, `added-item-${nextItem++}`);
+            return [...items];
+          });
+        }
+        break;
+      case 'r':
+        if (cmdIndex !== null) {
+          this.items.update((items) => {
+            items.splice(cmdIndex, 1);
             return [...items];
           });
         }
         break;
       case 'd':
-        if (active) {
+        if (cmdIndex !== null) {
           this.disabled.update((disabled) => {
-            disabled.has(active) ? disabled.delete(active) : disabled.add(active);
+            const item = this.listbox().items()[cmdIndex];
+            disabled.has(item) ? disabled.delete(item) : disabled.add(item);
             return new Set(disabled);
           });
         }
+        break;
+      case 'c':
+        this.cmd.set('');
+        break;
+      case 'Backspace':
+        this.cmd.update((cmd) => cmd.slice(0, -1));
         break;
       case '0':
       case '1':
@@ -70,17 +87,7 @@ export class ListboxDemo {
       case '7':
       case '8':
       case '9':
-        if (event.ctrlKey) {
-          this.items.update((items) => {
-            items.splice(Number(event.key), 1);
-            return [...items];
-          });
-        } else {
-          this.items.update((items) => {
-            items.splice(Number(event.key), 0, `added-item-${nextItem++}`);
-            return [...items];
-          });
-        }
+        this.cmd.update((cmd) => cmd + event.key);
         break;
     }
   }
