@@ -1,15 +1,30 @@
-import { computed, Signal } from '@angular/core';
+import { computed, Signal, WritableSignal } from '@angular/core';
 
-export type StateTransition<T> = {
-  [P in keyof T]?: T[P] extends Signal<infer S> ? (value: S) => S : never;
+export type StateTransitions<S> = {
+  [P in keyof S]: S[P] extends Signal<infer T> ? (value: T) => T : never;
 };
 
-export interface StateMachine<S> {
-  transitions?: StateTransition<S>;
-  handlers?: {};
+export type Mutable<S> = {
+  [P in keyof S]: S[P] extends Signal<infer T> ? WritableSignal<T> : never;
+};
+
+export type StateEventHandlers<S, K extends keyof S> = {
+  [P in keyof GlobalEventHandlersEventMap]?: (
+    mutable: Mutable<Pick<S, K>>,
+    event: GlobalEventHandlersEventMap[P],
+    state: S
+  ) => void;
+};
+
+export interface StateMachine<S, K extends keyof S> {
+  transitions: StateTransitions<Pick<S, K>>;
+  eventHandlers?: StateEventHandlers<S, K>;
 }
 
-export function connectStateMachines<S>(state: S, machines: Signal<StateMachine<S>[]>): Signal<S> {
+export function connectStateMachines<S>(
+  state: S,
+  machines: Signal<StateMachine<S, any>[]>
+): Signal<S> {
   return computed(() => {
     const transforms: { [state: string]: (v: unknown) => unknown } = {};
     for (const machine of machines()) {

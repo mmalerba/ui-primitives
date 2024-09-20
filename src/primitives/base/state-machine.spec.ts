@@ -17,7 +17,9 @@ describe('state machine', () => {
       items: signal(items),
       active: signal(undefined),
     };
-    const machines = signal<StateMachine<ActiveDescendantState<ActiveDescendantItemState>>[]>([]);
+    const machines = signal<StateMachine<ActiveDescendantState<ActiveDescendantItemState>, any>[]>(
+      []
+    );
     const state = connectStateMachines<ActiveDescendantState<ActiveDescendantItemState>>(
       initial,
       machines

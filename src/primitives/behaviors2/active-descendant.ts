@@ -14,9 +14,11 @@ export interface ActiveDescendantState<I extends ActiveDescendantItemState> {
   disabled: Signal<boolean>;
 }
 
+export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items';
+
 export function createActiveDescendantStateMachine<I extends ActiveDescendantItemState>(
   state: ActiveDescendantState<I>
-): StateMachine<ActiveDescendantState<I>> {
+): StateMachine<ActiveDescendantState<I>, ActiveDescendantTransitions> {
   return {
     transitions: {
       activeDescendantId: () => state.active()?.id(),
@@ -26,6 +28,11 @@ export function createActiveDescendantStateMachine<I extends ActiveDescendantIte
           ...item,
           tabindex: signal(-1),
         })),
+    },
+    eventHandlers: {
+      focusin: ({ activeDescendantId }, event, state) => {
+        // TODO
+      },
     },
   };
 }
