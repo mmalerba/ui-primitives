@@ -17,12 +17,12 @@ export interface ActiveDescendantState<I extends ActiveDescendantItemState> {
 export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items';
 
 export function createActiveDescendantStateMachine<I extends ActiveDescendantItemState>(
-  state: ActiveDescendantState<I>
+  state: Signal<ActiveDescendantState<I>>
 ): StateMachine<ActiveDescendantState<I>, ActiveDescendantTransitions> {
   return {
     transitions: {
-      activeDescendantId: () => state.active()?.id(),
-      tabindex: () => (state.disabled() ? -1 : 0),
+      activeDescendantId: () => state().active()?.id(),
+      tabindex: () => (state().disabled() ? -1 : 0),
       items: (items) =>
         items.map((item) => ({
           ...item,
