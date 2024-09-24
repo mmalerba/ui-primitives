@@ -2,25 +2,25 @@ import { signal, Signal } from '@angular/core';
 import { StateMachine } from '../base/state-machine';
 
 export interface ActiveDescendantItemState {
-  id: Signal<string>;
-  tabindex: Signal<0 | -1>;
+  readonly id: Signal<string>;
+  readonly tabindex: Signal<0 | -1>;
 }
 
 export interface ActiveDescendantState<
   I extends ActiveDescendantItemState = ActiveDescendantItemState
 > {
-  items: Signal<I[]>;
-  active: Signal<I | undefined>;
-  activeDescendantId: Signal<string | undefined>;
-  tabindex: Signal<0 | -1>;
-  disabled: Signal<boolean>;
+  readonly element: HTMLElement;
+  readonly items: Signal<readonly I[]>;
+  readonly active: Signal<I | undefined>;
+  readonly activeDescendantId: Signal<string | undefined>;
+  readonly tabindex: Signal<0 | -1>;
+  readonly disabled: Signal<boolean>;
+  readonly focused: Signal<HTMLElement | undefined>;
 }
-
-export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items';
 
 export const activeDescendantStateMachine: StateMachine<
   ActiveDescendantState,
-  ActiveDescendantTransitions
+  'activeDescendantId' | 'tabindex' | 'items' | 'focused'
 > = {
   transitions: {
     activeDescendantId: (state) => state.active()?.id(),
@@ -30,10 +30,13 @@ export const activeDescendantStateMachine: StateMachine<
         ...item,
         tabindex: signal(-1),
       })),
+    focused: (_, focused) => focused,
   },
-  eventHandlers: {
-    focusin: ({ activeDescendantId }, event, state) => {
-      // TODO
+  events: {
+    focusin: ({ focused }, state) => {
+      if (!state.disabled()) {
+        focused.set(state.element);
+      }
     },
   },
 };

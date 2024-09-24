@@ -33,8 +33,8 @@ export type MutableState<S> = {
  * Defines a set of event handlers for a state machine. This is represented as an object that maps
  * each event type to a handler function that takes the following arguments:
  *  1. An object allowing mutable access to a the subset of properties on `S` contained in `M`
- *  2. The event object corresponding to the event type.
- *  3. The state object that the state machine is operating on.
+ *  2. The state object that the state machine is operating on.
+ *  3. The event object corresponding to the event type.
  *
  * @template S The state object type.
  * @template M The keys of the state object type which the handler has mutable access to.
@@ -42,8 +42,8 @@ export type MutableState<S> = {
 export type StateMachineEventHandlers<S, M extends keyof S> = {
   [P in keyof GlobalEventHandlersEventMap]?: (
     mutable: MutableState<Pick<S, M>>,
-    event: GlobalEventHandlersEventMap[P],
-    state: S
+    state: S,
+    event: GlobalEventHandlersEventMap[P]
   ) => void;
 };
 
@@ -56,7 +56,7 @@ export type StateMachineEventHandlers<S, M extends keyof S> = {
  */
 export interface StateMachine<S, T extends keyof S | unknown = unknown> {
   transitions: StateTransitions<S, T extends keyof S ? T : never>;
-  eventHandlers: StateMachineEventHandlers<S, T extends keyof S ? T : keyof S>;
+  events: StateMachineEventHandlers<S, T extends keyof S ? T : keyof S>;
 }
 
 /**
@@ -100,7 +100,7 @@ export function compose<T extends [...StateMachine<any, any>[]]>(
 ): StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> {
   const result: StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> = {
     transitions: {} as StateTransitions<ComposedState<T>, ComposedTransitionProperties<T>>,
-    eventHandlers: {},
+    events: {},
   };
   type Transitions = typeof result.transitions;
   for (const machine of stateMachines) {
