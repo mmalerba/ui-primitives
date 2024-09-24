@@ -16,23 +16,22 @@ export interface ActiveDescendantState<I extends ActiveDescendantItemState> {
 
 export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items';
 
-export function createActiveDescendantStateMachine<I extends ActiveDescendantItemState>(
-  state: Signal<ActiveDescendantState<I>>
-): StateMachine<ActiveDescendantState<I>, ActiveDescendantTransitions> {
-  return {
-    transitions: {
-      activeDescendantId: () => state().active()?.id(),
-      tabindex: () => (state().disabled() ? -1 : 0),
-      items: (items) =>
-        items.map((item) => ({
-          ...item,
-          tabindex: signal(-1),
-        })),
+export const activeDescendantStateMachine: StateMachine<
+  ActiveDescendantState<ActiveDescendantItemState>,
+  ActiveDescendantTransitions
+> = {
+  transitions: {
+    activeDescendantId: (state) => state.active()?.id(),
+    tabindex: (state) => (state.disabled() ? -1 : 0),
+    items: (_, items) =>
+      items.map((item) => ({
+        ...item,
+        tabindex: signal(-1),
+      })),
+  },
+  eventHandlers: {
+    focusin: ({ activeDescendantId }, event, state) => {
+      // TODO
     },
-    eventHandlers: {
-      focusin: ({ activeDescendantId }, event, state) => {
-        // TODO
-      },
-    },
-  };
-}
+  },
+};

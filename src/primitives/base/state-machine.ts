@@ -1,4 +1,5 @@
 import { computed, Signal, untracked, WritableSignal } from '@angular/core';
+import { linkedSignal } from './linked-signal';
 
 /**
  * This file defines a `StateMachine` that operates on a state object. A state object is a simple
@@ -14,8 +15,8 @@ import { computed, Signal, untracked, WritableSignal } from '@angular/core';
  *
  * @template S The state object type.
  */
-export type StateTransitions<S> = {
-  [P in keyof S]: S[P] extends Signal<infer T> ? (value: T) => T : never;
+export type StateTransitions<S, T extends keyof S> = {
+  [P in keyof Pick<S, T>]: S[P] extends Signal<infer V> ? (state: S, value: V) => V : never;
 };
 
 /**
@@ -24,7 +25,7 @@ export type StateTransitions<S> = {
  *
  * @template S The state object type.
  */
-export type Mutable<S> = {
+export type MutableState<S> = {
   [P in keyof S]: S[P] extends Signal<infer T> ? WritableSignal<T> : never;
 };
 
@@ -40,7 +41,7 @@ export type Mutable<S> = {
  */
 export type StateMachineEventHandlers<S, M extends keyof S> = {
   [P in keyof GlobalEventHandlersEventMap]?: (
-    mutable: Mutable<Pick<S, M>>,
+    mutable: MutableState<Pick<S, M>>,
     event: GlobalEventHandlersEventMap[P],
     state: S
   ) => void;
@@ -54,12 +55,12 @@ export type StateMachineEventHandlers<S, M extends keyof S> = {
  * @template T The keys of the state object type which the state machine provides transitions for.
  */
 export interface StateMachine<S, T extends keyof S> {
-  transitions: StateTransitions<Pick<S, T>>;
+  transitions: StateTransitions<S, T>;
   eventHandlers?: StateMachineEventHandlers<S, T>;
 }
 
 /**
- * The combined state object type for a set of composed state machines.
+ * Defines a combined state object type for a set of composed state machines.
  *
  * @template T A tuple of the state machines being composed.
  */
@@ -73,7 +74,7 @@ export type ComposedState<T extends [...StateMachine<any, any>[]]> = T extends [
   : never;
 
 /**
- * The combined state transitions properties for a set of composed state machines.
+ * Defines a combined state transitions properties for a set of composed state machines.
  *
  * @template T A tuple of the state machine types being composed.
  */
@@ -92,7 +93,7 @@ export type ComposedTransitionProperties<T extends [...StateMachine<any, any>[]]
  *
  * @template T A tuple of the state machine types being composed.
  * @param stateMachines The state machines to compose.
- * @returns
+ * @returns The composed state machine.
  */
 export function compose<T extends [...StateMachine<any, any>[]]>(
   ...stateMachines: T
@@ -102,49 +103,52 @@ export function compose<T extends [...StateMachine<any, any>[]]>(
     eventHandlers: {},
   };
   for (const machine of stateMachines) {
-    for (const [stateProperty, transform] of Object.entries(machine?.transitions ?? {})) {
-      const key = stateProperty as ComposedTransitionProperties<T>;
-      const prevTransform = result.transitions[key];
-      result.transitions[key] = ((v: unknown) =>
-        transform(prevTransform ? prevTransform(v) : v)) as any;
+    for (const [key, transform] of Object.entries(machine?.transitions ?? {})) {
+      const stateProperty = key as ComposedTransitionProperties<T>;
+      const prevTransform = result.transitions[stateProperty];
+      result.transitions[stateProperty] = ((s: ComposedState<T>, v: unknown) =>
+        transform(s, prevTransform ? prevTransform(s, v) : v)) as any;
     }
   }
   return result;
 }
 
-// TODO: clean this function up.
-/**
- * Connects the initial state object to a set of state machines and returns a signal of the state
- * with the machines applied to it.
- *
- * Because the given machines is a signal, it may change over time. The returned state signal will
- * be kept in sync with the current machines.
- *
- * @template S The state object type.
- * @param initial The initial state object.
- * @param machines A signal of state machines to attach to the initial state.
- * @returns A signal of the state object with the state machines applied.
- */
-export function connectStateMachines<S>(
-  initial: S,
-  machines: Signal<StateMachine<S, any>[]>
+export function applyStateMachine<S>(state: S, machine: StateMachine<S, any>): S {
+  const result = { ...state };
+  for (const [key, transform] of Object.entries(machine.transitions)) {
+    const stateProperty = key as keyof S;
+    const initial = result[stateProperty] as Signal<unknown>;
+    result[stateProperty] = computed(() => transform(result, initial())) as S[keyof S];
+  }
+  return result;
+}
+
+export function applyDynamicStateMachine<S>(
+  state: S,
+  stateMachine: Signal<StateMachine<S, any>>
 ): Signal<S> {
-  let prev: S = initial;
+  let prev: { state: S; machine: StateMachine<S, any> } | undefined;
   return computed(() => {
-    const machine = compose(...(machines() as [StateMachine<S, any>]));
-    const result = { ...prev };
-    for (const [state, transform] of Object.entries(machine.transitions)) {
-      const stateKey = state as keyof S;
-      const initial = result[stateKey] as any;
-      result[stateKey] = computed(() => transform(untracked(initial))) as any;
-    }
-    return (prev = result);
+    const machine = stateMachine();
+    return untracked(() => {
+      const initial = { ...state };
+      if (prev) {
+        for (const key of Object.keys(prev.machine.transitions)) {
+          const stateProperty = key as keyof S;
+          const valueSignal = initial[stateProperty] as S[keyof S] & Signal<unknown>;
+          const prevValueSignal = prev.state[stateProperty] as S[keyof S] & Signal<unknown>;
+          const linkedValue = linkedSignal(() => valueSignal());
+          linkedValue.set(prevValueSignal());
+          initial[stateProperty] = linkedValue as S[keyof S];
+        }
+      }
+      const result = applyStateMachine(initial, machine);
+      prev = { machine, state: result };
+      return result;
+    });
   });
 }
 
 // Notes (TODO):
 // - Make each of the above props a derived signal instead
 // - Pass the derived signal to the handlers for each incremental state
-// - Save the values from the previous computed into the initial value of the new derived signal
-// - Maybe we need state machine factories (to configure options, etc, before passing in state)
-//   - Or each transition function takes the state as input?
