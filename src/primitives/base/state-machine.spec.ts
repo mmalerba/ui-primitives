@@ -13,7 +13,7 @@ import {
 
 describe('state machine', () => {
   let items: MutableState<ActiveDescendantItemState>[];
-  let initial: MutableState<ActiveDescendantState<ActiveDescendantItemState>>;
+  let initial: MutableState<ActiveDescendantState>;
 
   beforeEach(() => {
     items = [
@@ -47,9 +47,7 @@ describe('state machine', () => {
   });
 
   it('should apply a dynamic state machine', () => {
-    const machine = signal<StateMachine<ActiveDescendantState<ActiveDescendantItemState>, any>>(
-      activeDescendantStateMachine
-    );
+    const machine = signal(activeDescendantStateMachine);
     const state = applyDynamicStateMachine(initial, machine);
     expect(state().activeDescendantId()).toBe('id1');
     expect(state().tabindex()).toBe(0);
@@ -57,9 +55,7 @@ describe('state machine', () => {
   });
 
   it('should respond to changes in the dynamic state machine', () => {
-    const machine = signal<StateMachine<ActiveDescendantState<ActiveDescendantItemState>, any>>(
-      activeDescendantStateMachine
-    );
+    const machine = signal<StateMachine<ActiveDescendantState>>(activeDescendantStateMachine);
     const state = applyDynamicStateMachine(initial, machine);
     expect(state().activeDescendantId()).toBe('id1');
 
@@ -69,16 +65,14 @@ describe('state machine', () => {
         tabindex: () => -1,
       },
       eventHandlers: {},
-    } as any);
+    });
 
     expect(state().activeDescendantId()).toBe('test');
     expect(state().tabindex()).toBe(-1);
   });
 
   it('should preserve state from previous machine that is not overwritten by the new machine', () => {
-    const machine = signal<StateMachine<ActiveDescendantState<ActiveDescendantItemState>, any>>(
-      activeDescendantStateMachine
-    );
+    const machine = signal<StateMachine<ActiveDescendantState>>(activeDescendantStateMachine);
     const state = applyDynamicStateMachine(initial, machine);
     expect(state().activeDescendantId()).toBe('id1');
 
@@ -87,7 +81,7 @@ describe('state machine', () => {
         activeDescendantId: (_: unknown, prev: unknown) => prev,
       },
       eventHandlers: {},
-    } as any);
+    });
 
     expect(state().activeDescendantId()).toBe('id1');
     expect(state().tabindex()).toBe(0);

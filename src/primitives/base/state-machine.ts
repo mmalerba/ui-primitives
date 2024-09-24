@@ -54,9 +54,9 @@ export type StateMachineEventHandlers<S, M extends keyof S> = {
  * @template S The state object type.
  * @template T The keys of the state object type which the state machine provides transitions for.
  */
-export interface StateMachine<S, T extends keyof S> {
-  transitions: StateTransitions<S, T>;
-  eventHandlers?: StateMachineEventHandlers<S, T>;
+export interface StateMachine<S, T extends keyof S | unknown = unknown> {
+  transitions: StateTransitions<S, T extends keyof S ? T : never>;
+  eventHandlers: StateMachineEventHandlers<S, T extends keyof S ? T : keyof S>;
 }
 
 /**
@@ -64,11 +64,11 @@ export interface StateMachine<S, T extends keyof S> {
  *
  * @template T A tuple of the state machines being composed.
  */
-export type ComposedState<T extends [...StateMachine<any, any>[]]> = T extends [
-  StateMachine<infer S, any>,
+export type ComposedState<T extends [...StateMachine<any>[]]> = T extends [
+  StateMachine<infer S>,
   ...infer R
 ]
-  ? R extends [...StateMachine<any, any>[]]
+  ? R extends [...StateMachine<any>[]]
     ? S | ComposedState<R>
     : []
   : never;
@@ -99,24 +99,30 @@ export function compose<T extends [...StateMachine<any, any>[]]>(
   ...stateMachines: T
 ): StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> {
   const result: StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> = {
-    transitions: {} as any,
+    transitions: {} as StateTransitions<ComposedState<T>, ComposedTransitionProperties<T>>,
     eventHandlers: {},
   };
+  type Transitions = typeof result.transitions;
   for (const machine of stateMachines) {
-    for (const [key, transform] of Object.entries(machine?.transitions ?? {})) {
-      const stateProperty = key as ComposedTransitionProperties<T>;
+    for (const [stateProperty, transform] of Object.entries(machine?.transitions ?? {}) as [
+      keyof Transitions,
+      Transitions[keyof Transitions]
+    ][]) {
       const prevTransform = result.transitions[stateProperty];
       result.transitions[stateProperty] = ((s: ComposedState<T>, v: unknown) =>
-        transform(s, prevTransform ? prevTransform(s, v) : v)) as any;
+        transform(s, prevTransform ? prevTransform(s, v) : v)) as Transitions[keyof Transitions];
     }
   }
   return result;
 }
 
-export function applyStateMachine<S>(state: S, machine: StateMachine<S, any>): S {
+export function applyStateMachine<S>(state: S, machine: StateMachine<S>): S {
+  type Transitions = typeof machine.transitions;
   const result = { ...state };
-  for (const [key, transform] of Object.entries(machine.transitions)) {
-    const stateProperty = key as keyof S;
+  for (const [stateProperty, transform] of Object.entries(machine.transitions) as [
+    keyof S,
+    Transitions[keyof Transitions]
+  ][]) {
     const initial = result[stateProperty] as Signal<unknown>;
     result[stateProperty] = computed(() => transform(result, initial())) as S[keyof S];
   }
@@ -125,18 +131,18 @@ export function applyStateMachine<S>(state: S, machine: StateMachine<S, any>): S
 
 export function applyDynamicStateMachine<S>(
   state: S,
-  stateMachine: Signal<StateMachine<S, any>>
+  stateMachine: Signal<StateMachine<S>>
 ): Signal<S> {
-  let prev: { state: S; machine: StateMachine<S, any> } | undefined;
+  let prev: { state: S; machine: StateMachine<S> } | undefined;
   return computed(() => {
     const machine = stateMachine();
     return untracked(() => {
       const initial = { ...state };
       if (prev) {
-        for (const key of Object.keys(prev.machine.transitions)) {
-          const stateProperty = key as keyof S;
-          const valueSignal = initial[stateProperty] as S[keyof S] & Signal<unknown>;
-          const prevValueSignal = prev.state[stateProperty] as S[keyof S] & Signal<unknown>;
+        for (const key of Object.keys(prev.machine.transitions) as (keyof S)[]) {
+          const stateProperty = key;
+          const valueSignal = initial[stateProperty] as Signal<unknown>;
+          const prevValueSignal = prev.state[stateProperty] as Signal<unknown>;
           const linkedValue = linkedSignal(() => valueSignal());
           linkedValue.set(prevValueSignal());
           initial[stateProperty] = linkedValue as S[keyof S];

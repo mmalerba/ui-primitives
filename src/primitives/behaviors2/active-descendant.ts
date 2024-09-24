@@ -6,7 +6,9 @@ export interface ActiveDescendantItemState {
   tabindex: Signal<0 | -1>;
 }
 
-export interface ActiveDescendantState<I extends ActiveDescendantItemState> {
+export interface ActiveDescendantState<
+  I extends ActiveDescendantItemState = ActiveDescendantItemState
+> {
   items: Signal<I[]>;
   active: Signal<I | undefined>;
   activeDescendantId: Signal<string | undefined>;
@@ -17,7 +19,7 @@ export interface ActiveDescendantState<I extends ActiveDescendantItemState> {
 export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items';
 
 export const activeDescendantStateMachine: StateMachine<
-  ActiveDescendantState<ActiveDescendantItemState>,
+  ActiveDescendantState,
   ActiveDescendantTransitions
 > = {
   transitions: {
