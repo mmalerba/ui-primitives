@@ -59,12 +59,68 @@ export interface StateMachine<S, T extends keyof S> {
 }
 
 /**
+ * The combined state object type for a set of composed state machines.
+ *
+ * @template T A tuple of the state machines being composed.
+ */
+export type ComposedState<T extends [...StateMachine<any, any>[]]> = T extends [
+  StateMachine<infer S, any>,
+  ...infer R
+]
+  ? R extends [...StateMachine<any, any>[]]
+    ? S | ComposedState<R>
+    : []
+  : never;
+
+/**
+ * The combined state transitions properties for a set of composed state machines.
+ *
+ * @template T A tuple of the state machine types being composed.
+ */
+export type ComposedTransitionProperties<T extends [...StateMachine<any, any>[]]> = T extends [
+  StateMachine<any, infer P>,
+  ...infer R
+]
+  ? R extends [...StateMachine<any, any>[]]
+    ? P | ComposedTransitionProperties<R>
+    : []
+  : never;
+
+/**
+ * Composes a set of state machines into a single state machine that operates over the combined
+ * state object of all of them.
+ *
+ * @template T A tuple of the state machine types being composed.
+ * @param stateMachines The state machines to compose.
+ * @returns
+ */
+export function compose<T extends [...StateMachine<any, any>[]]>(
+  ...stateMachines: T
+): StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> {
+  const result: StateMachine<ComposedState<T>, ComposedTransitionProperties<T>> = {
+    transitions: {} as any,
+    eventHandlers: {},
+  };
+  for (const machine of stateMachines) {
+    for (const [stateProperty, transform] of Object.entries(machine?.transitions ?? {})) {
+      const key = stateProperty as ComposedTransitionProperties<T>;
+      const prevTransform = result.transitions[key];
+      result.transitions[key] = ((v: unknown) =>
+        transform(prevTransform ? prevTransform(v) : v)) as any;
+    }
+  }
+  return result;
+}
+
+// TODO: clean this function up.
+/**
  * Connects the initial state object to a set of state machines and returns a signal of the state
  * with the machines applied to it.
  *
  * Because the given machines is a signal, it may change over time. The returned state signal will
  * be kept in sync with the current machines.
  *
+ * @template S The state object type.
  * @param initial The initial state object.
  * @param machines A signal of state machines to attach to the initial state.
  * @returns A signal of the state object with the state machines applied.
@@ -75,15 +131,9 @@ export function connectStateMachines<S>(
 ): Signal<S> {
   let prev: S = initial;
   return computed(() => {
-    const transforms: { [state: string]: (v: unknown) => unknown } = {};
-    for (const machine of machines()) {
-      for (const [state, transform] of Object.entries(machine?.transitions ?? {})) {
-        const prevTransform = transforms[state];
-        transforms[state] = (v: any) => (transform as any)(prevTransform ? prevTransform(v) : v);
-      }
-    }
+    const machine = compose(...(machines() as [StateMachine<S, any>]));
     const result = { ...prev };
-    for (const [state, transform] of Object.entries(transforms)) {
+    for (const [state, transform] of Object.entries(machine.transitions)) {
       const stateKey = state as keyof S;
       const initial = result[stateKey] as any;
       result[stateKey] = computed(() => transform(untracked(initial))) as any;
@@ -97,4 +147,4 @@ export function connectStateMachines<S>(
 // - Pass the derived signal to the handlers for each incremental state
 // - Save the values from the previous computed into the initial value of the new derived signal
 // - Maybe we need state machine factories (to configure options, etc, before passing in state)
-//   - Or each transition function takes the state as input.
+//   - Or each transition function takes the state as input?
