@@ -61,8 +61,7 @@ describe('state machine', () => {
         activeDescendantId: () => 'test',
         tabindex: () => -1,
       },
-      events: {},
-    });
+    } as StateMachine<ActiveDescendantState, 'activeDescendantId' | 'tabindex'>);
 
     expect(state().activeDescendantId()).toBe('test');
     expect(state().tabindex()).toBe(-1);
@@ -78,8 +77,7 @@ describe('state machine', () => {
       transitions: {
         activeDescendantId: (_: unknown, prev: unknown) => prev,
       },
-      events: {},
-    });
+    } as StateMachine<ActiveDescendantState, 'activeDescendantId'>);
 
     expect(state().activeDescendantId()).toBe('id1');
     expect(state().tabindex()).toBe(0);

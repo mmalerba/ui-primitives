@@ -18,9 +18,14 @@ export interface ActiveDescendantState<
   readonly focused: Signal<HTMLElement | undefined>;
 }
 
+export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items' | 'focused';
+
+export type ActiveDescendantEvents = 'focusin';
+
 export const activeDescendantStateMachine: StateMachine<
   ActiveDescendantState,
-  'activeDescendantId' | 'tabindex' | 'items' | 'focused'
+  ActiveDescendantTransitions,
+  ActiveDescendantEvents
 > = {
   transitions: {
     activeDescendantId: (state) => state.active()?.id(),
