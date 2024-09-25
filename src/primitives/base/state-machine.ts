@@ -14,6 +14,7 @@ import { linkedSignal } from './linked-signal';
  * the previous value for that state property to the next value.
  *
  * @template S The state object type.
+ * @template T The keys of the state object type which the state machine provides transitions for.
  */
 export type StateTransitions<S, T extends keyof S> = {
   [P in keyof Pick<S, T>]: S[P] extends Signal<infer V> ? (state: S, value: V) => V : never;
@@ -37,7 +38,8 @@ export type MutableState<S> = {
  *  3. The event object corresponding to the event type.
  *
  * @template S The state object type.
- * @template M The keys of the state object type which the handler has mutable access to.
+ * @template M The keys of the state object type which the handlers have mutable access to.
+ * @template E The keys for the event types handled by the handlers.
  */
 export type StateMachineEventHandlers<
   S,
@@ -56,7 +58,8 @@ export type StateMachineEventHandlers<
  * set of state transtions and a set of event handlers that mutate the state.
  *
  * @template S The state object type.
- * @template T The keys of the state object type which the state machine provides transitions for.
+ * @template T The keys of the state object type which the state machine has transitions for.
+ * @template E The keys for the event types handled by the state machine.
  */
 export interface StateMachine<
   S,
@@ -64,7 +67,7 @@ export interface StateMachine<
   E extends keyof GlobalEventHandlersEventMap = never
 > {
   transitions: StateTransitions<S, T>;
-  events?: E extends keyof GlobalEventHandlersEventMap ? StateMachineEventHandlers<S, T, E> : never;
+  events: E extends keyof GlobalEventHandlersEventMap ? StateMachineEventHandlers<S, T, E> : never;
 }
 
 /**
@@ -132,6 +135,16 @@ export function compose<T extends [...StateMachine<any, any, any>[]]>(
       const prevTransform = result.transitions[stateProperty];
       result.transitions[stateProperty] = ((s: ComposedState<T>, v: unknown) =>
         transform(s, prevTransform ? prevTransform(s, v) : v)) as TransitionFn;
+    }
+    for (const [key, handler] of Object.entries(machine?.events ?? {})) {
+      const eventType = key as ComposedEventProperties<T>;
+      const prevHandler = result.events[eventType];
+      (result.events[eventType] as unknown) = (...args: [any, any, any]) => {
+        if (prevHandler) {
+          prevHandler(...args);
+        }
+        handler(...args);
+      };
     }
   }
   return result;
