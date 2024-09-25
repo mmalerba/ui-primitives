@@ -31,7 +31,7 @@ export class ListboxDemo {
   cmdIndex = computed(() => (this.cmd() ? Number(this.cmd()) : null));
 
   handleKeydown(event: KeyboardEvent) {
-    const active = this.listbox().uiState.active();
+    const active = this.listbox().uiState().active();
     const cmdIndex = this.cmdIndex() ?? (active ? this.listbox().items().indexOf(active) : null);
     switch (event.key) {
       case 'f':

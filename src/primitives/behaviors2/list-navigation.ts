@@ -1,6 +1,10 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { StateMachine } from '../base/state-machine';
 
+export interface ListNavigationOptions {
+  readonly wrap: boolean;
+}
+
 export interface ListNavigationItemState {
   readonly disabled: Signal<boolean>;
 }
@@ -14,8 +18,19 @@ export interface ListNavigationState<I extends ListNavigationItemState = ListNav
   readonly disabled: Signal<boolean>;
 }
 
-export const listNavigationStateMachine: StateMachine<ListNavigationState, 'activated' | 'active'> =
-  {
+export type ListNavigationTransitions = 'activated' | 'active';
+
+export type ListNavigationEvents = 'keydown';
+
+export const DEFAULT_LIST_NAVIGATION_OPTIONS: ListNavigationOptions = {
+  wrap: false,
+};
+
+export function getListNavigationStateMachine(
+  options: ListNavigationOptions = DEFAULT_LIST_NAVIGATION_OPTIONS
+): StateMachine<ListNavigationState, ListNavigationTransitions, ListNavigationEvents> {
+  options = { ...DEFAULT_LIST_NAVIGATION_OPTIONS, ...options };
+  return {
     transitions: {
       activated: (_, activated) => activated,
       active: (state, active) => {
@@ -24,34 +39,36 @@ export const listNavigationStateMachine: StateMachine<ListNavigationState, 'acti
       },
     },
     events: {
-      keydown: handleKeydown,
+      keydown: ({ activated }, state, event) => handleKeydown(activated, state, event, options),
     },
   };
+}
 
 function handleKeydown(
-  { activated }: { activated: WritableSignal<unknown> },
+  activated: WritableSignal<ListNavigationItemState | undefined>,
   state: ListNavigationState,
-  event: KeyboardEvent
+  event: KeyboardEvent,
+  options: ListNavigationOptions
 ) {
   switch (event.key) {
     case 'ArrowDown':
       if (state.orientation() === 'vertical') {
-        activateNextItem(activated, state);
+        activateNextItem(activated, state, options);
         event.preventDefault();
       }
       break;
     case 'ArrowUp':
       if (state.orientation() === 'vertical') {
-        activatePreviousItem(activated, state);
+        activatePreviousItem(activated, state, options);
         event.preventDefault();
       }
       break;
     case 'ArrowRight':
       if (state.orientation() === 'horizontal') {
         if (state.direction() === 'ltr') {
-          activateNextItem(activated, state);
+          activateNextItem(activated, state, options);
         } else {
-          activatePreviousItem(activated, state);
+          activatePreviousItem(activated, state, options);
         }
         event.preventDefault();
       }
@@ -59,9 +76,9 @@ function handleKeydown(
     case 'ArrowLeft':
       if (state.orientation() === 'horizontal') {
         if (state.direction() === 'ltr') {
-          activatePreviousItem(activated, state);
+          activatePreviousItem(activated, state, options);
         } else {
-          activateNextItem(activated, state);
+          activateNextItem(activated, state, options);
         }
         event.preventDefault();
       }
@@ -74,11 +91,15 @@ function getActiveIndex(state: ListNavigationState) {
   return active ? state.items().indexOf(active) : -1;
 }
 
-function activateNextItem(activated: WritableSignal<unknown>, state: ListNavigationState) {
+function activateNextItem(
+  activated: WritableSignal<unknown>,
+  state: ListNavigationState,
+  options: ListNavigationOptions
+) {
   const currentIndex = getActiveIndex(state);
   let nextIndex = currentIndex;
   do {
-    nextIndex = clampIndex(nextIndex + 1, state);
+    nextIndex = clampIndex(nextIndex + 1, state, options);
   } while (
     !canActivate(nextIndex, state) &&
     nextIndex !== currentIndex &&
@@ -89,19 +110,22 @@ function activateNextItem(activated: WritableSignal<unknown>, state: ListNavigat
   }
 }
 
-function activatePreviousItem(activated: WritableSignal<unknown>, state: ListNavigationState) {
+function activatePreviousItem(
+  activated: WritableSignal<unknown>,
+  state: ListNavigationState,
+  options: ListNavigationOptions
+) {
   const currentIndex = getActiveIndex(state);
   let nextIndex = currentIndex;
   do {
-    nextIndex = clampIndex(nextIndex - 1, state);
+    nextIndex = clampIndex(nextIndex - 1, state, options);
   } while (!canActivate(nextIndex, state) && nextIndex !== currentIndex && nextIndex > 0);
   if (canActivate(nextIndex, state)) {
     activated.set(state.items()[nextIndex]);
   }
 }
 
-function clampIndex(index: number, state: ListNavigationState) {
-  const options = { wrap: false }; // TODO: Add options support.
+function clampIndex(index: number, state: ListNavigationState, options: ListNavigationOptions) {
   const itemCount = state.items().length;
   return options.wrap
     ? (index + itemCount) % itemCount

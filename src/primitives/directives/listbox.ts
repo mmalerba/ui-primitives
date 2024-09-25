@@ -8,14 +8,12 @@ import {
   inject,
   Injector,
   input,
+  signal,
 } from '@angular/core';
 import { EventDispatcher } from '../base/event-dispatcher';
-import { patchableSignal } from '../base/patchable-signal';
-import { ActiveDescendantFocusBehavior } from '../behaviors/active-descendant-focus';
-import { ListExplicitSelectionBehavior } from '../behaviors/list-explicit-selection';
-import { ListFollowFocusSelectionBehavior } from '../behaviors/list-follow-focus-selection';
-import { ListNavigationBehavior } from '../behaviors/list-navigation';
-import { RovingTabindexFocusBehavior } from '../behaviors/roving-tabindex-focus';
+import { applyDynamicStateMachine, compose } from '../base/state-machine';
+import { getActiveDescendantStateMachine } from '../behaviors2/active-descendant';
+import { getListNavigationStateMachine } from '../behaviors2/list-navigation';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -39,11 +37,11 @@ let nextId = 0;
   exportAs: 'ListboxOption',
   host: {
     role: 'option',
-    '[id]': 'uiState.id()',
-    '[attr.disabled]': 'uiState.disabled()',
-    '[attr.tabindex]': 'uiState.tabindex()',
-    '[attr.aria-selected]': 'listbox.uiState.selected() === this',
-    '[class.active]': 'listbox.uiState.active() === this',
+    '[id]': 'uiState().id()',
+    '[attr.disabled]': 'uiState().disabled()',
+    '[attr.tabindex]': 'uiState().tabindex()',
+    '[attr.aria-selected]': 'uiState().selected()',
+    '[class.active]': 'uiState().active()',
   },
 })
 export class ListboxOption {
@@ -54,15 +52,24 @@ export class ListboxOption {
   readonly id = input<string>(`tbd-listbox-option-${nextId++}`);
 
   // Set up our internal state.
-  readonly uiState = {
+  readonly inputState = {
     identity: this as ListboxOption,
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
 
-    tabindex: patchableSignal<number | undefined>(() => undefined),
+    tabindex: signal<number | undefined>(undefined),
 
     disabled: this.disabled,
     id: this.id,
   };
+
+  readonly uiState = computed(() => ({
+    ...this.listbox
+      .uiState()
+      .items()
+      .find((i) => i.identity === this.inputState.identity),
+    active: computed(() => this.listbox.uiState().active() === this.inputState.identity),
+    selected: computed(() => this.listbox.uiState().selected() === this.inputState.identity),
+  }));
 }
 
 @Directive({
@@ -71,13 +78,13 @@ export class ListboxOption {
   exportAs: 'Listbox',
   host: {
     role: 'listbox',
-    '[tabindex]': 'uiState.tabindex()',
-    '[attr.disabled]': 'uiState.disabled()',
-    '[attr.aria-orientation]': 'uiState.orientation()',
-    '[attr.aria-activedescendant]': 'uiState.activeDescendantId()',
-    '(keydown)': 'uiState.keydownEvents.dispatch($event)',
-    '(focusin)': 'uiState.focusinEvents.dispatch($event)',
-    '(focusout)': 'uiState.focusoutEvents.dispatch($event)',
+    '[tabindex]': 'uiState().tabindex()',
+    '[attr.disabled]': 'uiState().disabled()',
+    '[attr.aria-orientation]': 'uiState().orientation()',
+    '[attr.aria-activedescendant]': 'uiState().activeDescendantId()',
+    '(keydown)': 'uiState().keydownEvents.dispatch($event)',
+    '(focusin)': 'uiState().focusinEvents.dispatch($event)',
+    '(focusout)': 'uiState().focusoutEvents.dispatch($event)',
   },
 })
 export class Listbox {
@@ -93,17 +100,17 @@ export class Listbox {
   readonly items = contentChildren(ListboxOption);
 
   // Set up our internal state.
-  readonly uiState = {
+  private readonly inputState = {
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
 
-    active: patchableSignal(this.active),
-    activated: patchableSignal<ListboxOption | undefined>(() => undefined),
-    tabindex: patchableSignal<number | undefined>(() => undefined),
-    focused: patchableSignal<{ element: HTMLElement } | undefined>(() => undefined),
-    activeDescendantId: patchableSignal<string | undefined>(() => undefined),
-    items: patchableSignal(computed(() => this.items().map((item) => item.uiState))),
-    disabled: patchableSignal(this.disabled),
-    selected: patchableSignal(this.selected),
+    active: this.active,
+    activated: signal(undefined),
+    tabindex: signal<0 | -1>(-1),
+    focused: signal<HTMLElement | undefined>(undefined),
+    activeDescendantId: signal<string | undefined>(undefined),
+    items: computed(() => this.items().map((item) => item.inputState)),
+    disabled: this.disabled,
+    selected: this.selected,
 
     orientation: this.orientation,
     direction: this.directionality,
@@ -114,36 +121,20 @@ export class Listbox {
   };
 
   // Create behaviors based on the selected options.
-  private readonly behaviors = computed(() => [
-    new ListNavigationBehavior(this.uiState, {
-      wrap: this.options().wrapKeyNavigation,
-    }),
-    this.options().useActiveDescendant
-      ? new ActiveDescendantFocusBehavior(this.uiState)
-      : new RovingTabindexFocusBehavior(this.uiState),
-    this.options().selectionFollowsFocus
-      ? new ListFollowFocusSelectionBehavior(this.uiState)
-      : new ListExplicitSelectionBehavior(this.uiState),
-  ]);
+  private readonly machine = computed(() =>
+    compose(
+      getListNavigationStateMachine({ wrap: !!this.options().wrapKeyNavigation }),
+      getActiveDescendantStateMachine()
+    )
+  );
+
+  readonly uiState = applyDynamicStateMachine(this.inputState, this.machine);
 
   constructor() {
-    // Connect / disconnect the active behaviors.
-    effect((onCleanup) => {
-      const behaviors = this.behaviors();
-      for (const behavior of behaviors) {
-        behavior.connect();
-      }
-      onCleanup(() => {
-        for (const behavior of behaviors) {
-          behavior.disconnect();
-        }
-      });
-    });
-
     // Sync the focused state to the DOM.
     effect(() => {
-      this.uiState.focused();
-      afterNextRender(() => this.uiState.focused()?.element.focus(), { injector: this.injector });
+      this.uiState().focused();
+      afterNextRender(() => this.uiState().focused()?.focus(), { injector: this.injector });
     });
   }
 }
