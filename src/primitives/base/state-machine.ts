@@ -67,7 +67,9 @@ export interface StateMachine<
   E extends keyof GlobalEventHandlersEventMap = never
 > {
   transitions: StateTransitions<S, T>;
-  events: E extends keyof GlobalEventHandlersEventMap ? StateMachineEventHandlers<S, T, E> : never;
+  events: [E] extends [never]
+    ? { [P in keyof GlobalEventHandlersEventMap]?: never }
+    : StateMachineEventHandlers<S, T, E>;
 }
 
 /**
@@ -81,7 +83,7 @@ export type ComposedState<T extends [...StateMachine<any, any, any>[]]> = T exte
 ]
   ? R extends [...StateMachine<any, any, any>[]]
     ? S | ComposedState<R>
-    : never
+    : S
   : never;
 
 /**
@@ -95,7 +97,7 @@ export type ComposedTransitionProperties<T extends [...StateMachine<any, any, an
 ]
   ? R extends [...StateMachine<any, any, any>[]]
     ? P | ComposedTransitionProperties<R>
-    : never
+    : P
   : never;
 
 /**
@@ -109,7 +111,7 @@ export type ComposedEventProperties<T extends [...StateMachine<any, any, any>[]]
 ]
   ? R extends [...StateMachine<any, any, any>[]]
     ? P | ComposedEventProperties<R>
-    : never
+    : P
   : never;
 
 /**
@@ -151,12 +153,12 @@ export function compose<T extends [...StateMachine<any, any, any>[]]>(
 }
 
 export function applyStateMachine<S>(state: S, machine: StateMachine<S>): S {
-  type StateProperty = S[keyof S];
+  type StatePropertyValue = S[keyof S];
   const result = { ...state };
   for (const [key, transform] of Object.entries(machine.transitions)) {
     const stateProperty = key as keyof S;
     const initial = result[stateProperty] as Signal<unknown>;
-    result[stateProperty] = computed(() => transform(result, initial())) as StateProperty;
+    result[stateProperty] = computed(() => transform(result, initial())) as StatePropertyValue;
   }
   return result;
 }
@@ -165,7 +167,7 @@ export function applyDynamicStateMachine<S>(
   state: S,
   stateMachine: Signal<StateMachine<S>>
 ): Signal<S> {
-  type StateProperty = S[keyof S];
+  type StatePropertyValue = S[keyof S];
   let prev: { state: S; machine: StateMachine<S> } | undefined;
   return computed(() => {
     const machine = stateMachine();
@@ -178,7 +180,7 @@ export function applyDynamicStateMachine<S>(
           const prevValueSignal = prev.state[stateProperty] as Signal<unknown>;
           const linkedValue = linkedSignal(() => valueSignal());
           linkedValue.set(prevValueSignal());
-          initial[stateProperty] = linkedValue as StateProperty;
+          initial[stateProperty] = linkedValue as StatePropertyValue;
         }
       }
       const result = applyStateMachine(initial, machine);

@@ -99,7 +99,7 @@ export class Listbox {
   readonly directionality = input<'ltr' | 'rtl'>('ltr');
   readonly items = contentChildren(ListboxOption);
 
-  // Set up our internal state.
+  // Set up the input state for our state machine.
   private readonly inputState = {
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
 
@@ -120,7 +120,7 @@ export class Listbox {
     focusoutEvents: new EventDispatcher<FocusEvent>(),
   };
 
-  // Create behaviors based on the selected options.
+  // Create our state machine.
   private readonly machine = computed(() =>
     compose(
       getListNavigationStateMachine({ wrap: !!this.options().wrapKeyNavigation }),
@@ -128,6 +128,7 @@ export class Listbox {
     )
   );
 
+  // Run the state through the machine.
   readonly uiState = applyDynamicStateMachine(this.inputState, this.machine);
 
   constructor() {

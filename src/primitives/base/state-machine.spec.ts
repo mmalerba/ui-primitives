@@ -66,7 +66,7 @@ describe('state machine', () => {
         activeDescendantId: () => 'test',
         tabindex: () => -1,
       },
-      events: {} as never,
+      events: {},
     } as StateMachine<ActiveDescendantState, 'activeDescendantId' | 'tabindex'>);
 
     expect(state().activeDescendantId()).toBe('test');
@@ -90,7 +90,6 @@ describe('state machine', () => {
   });
 
   it('should compose event handlers', () => {
-    const initial = getInitialState();
     const machine1 = getActiveDescendantStateMachine();
     const machine2 = getActiveDescendantStateMachine();
     const focusinSpy1 = spyOn(machine1.events, 'focusin');
