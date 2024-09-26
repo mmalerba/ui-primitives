@@ -3,6 +3,7 @@ import {
   ActiveDescendantState,
   getActiveDescendantStateMachine,
 } from '../behaviors2/active-descendant';
+import { EventDispatcher } from './event-dispatcher-2';
 import {
   applyDynamicStateMachine,
   applyStateMachine,
@@ -31,7 +32,9 @@ function getInitialState() {
 describe('state machine', () => {
   it('should apply state machine to initial state', () => {
     const initial = getInitialState();
-    const state = applyStateMachine(initial, getActiveDescendantStateMachine());
+    const state = applyStateMachine(initial, getActiveDescendantStateMachine(), {
+      focusin: new EventDispatcher<FocusEvent>(),
+    });
     expect(state.activeDescendantId()).toBe('id1');
     expect(state.tabindex()).toBe(0);
     expect(state.items()[0].tabindex()).toBe(-1);
@@ -39,7 +42,9 @@ describe('state machine', () => {
 
   it('should respond to changes in initial state after machine applied', () => {
     const initial = getInitialState();
-    const state = applyStateMachine(initial, getActiveDescendantStateMachine());
+    const state = applyStateMachine(initial, getActiveDescendantStateMachine(), {
+      focusin: new EventDispatcher<FocusEvent>(),
+    });
     expect(state.tabindex()).toBe(0);
 
     initial.disabled.set(true);
@@ -49,7 +54,9 @@ describe('state machine', () => {
   it('should apply a dynamic state machine', () => {
     const initial = getInitialState();
     const machine = signal(getActiveDescendantStateMachine());
-    const state = applyDynamicStateMachine(initial, machine);
+    const state = applyDynamicStateMachine(initial, machine, {
+      focusin: new EventDispatcher<FocusEvent>(),
+    });
     expect(state().activeDescendantId()).toBe('id1');
     expect(state().tabindex()).toBe(0);
     expect(state().items()[0].tabindex()).toBe(-1);
@@ -58,7 +65,9 @@ describe('state machine', () => {
   it('should respond to changes in the dynamic state machine', () => {
     const initial = getInitialState();
     const machine = signal<StateMachine<ActiveDescendantState>>(getActiveDescendantStateMachine());
-    const state = applyDynamicStateMachine(initial, machine);
+    const state = applyDynamicStateMachine(initial, machine, {
+      focusin: new EventDispatcher<FocusEvent>(),
+    });
     expect(state().activeDescendantId()).toBe('id1');
 
     machine.set({
@@ -76,7 +85,9 @@ describe('state machine', () => {
   it('should preserve state from previous machine that is not overwritten by the new machine', () => {
     const initial = getInitialState();
     const machine = signal<StateMachine<ActiveDescendantState>>(getActiveDescendantStateMachine());
-    const state = applyDynamicStateMachine(initial, machine);
+    const state = applyDynamicStateMachine(initial, machine, {
+      focusin: new EventDispatcher<FocusEvent>(),
+    });
     expect(state().activeDescendantId()).toBe('id1');
 
     machine.set({

@@ -10,7 +10,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { EventDispatcher } from '../base/event-dispatcher';
+import { EventDispatcher } from '../base/event-dispatcher-2';
 import { applyDynamicStateMachine, compose } from '../base/state-machine';
 import { getActiveDescendantStateMachine } from '../behaviors2/active-descendant';
 import { getListNavigationStateMachine } from '../behaviors2/list-navigation';
@@ -82,9 +82,9 @@ export class ListboxOption {
     '[attr.disabled]': 'uiState().disabled()',
     '[attr.aria-orientation]': 'uiState().orientation()',
     '[attr.aria-activedescendant]': 'uiState().activeDescendantId()',
-    '(keydown)': 'uiState().keydownEvents.dispatch($event)',
-    '(focusin)': 'uiState().focusinEvents.dispatch($event)',
-    '(focusout)': 'uiState().focusoutEvents.dispatch($event)',
+    '(keydown)': 'dispatchers.keydown.dispatch($event)',
+    '(focusin)': 'dispatchers.focusin.dispatch($event)',
+    '(focusout)': 'dispatchers.focusout.dispatch($event)',
   },
 })
 export class Listbox {
@@ -114,10 +114,12 @@ export class Listbox {
 
     orientation: this.orientation,
     direction: this.directionality,
+  };
 
-    keydownEvents: new EventDispatcher<KeyboardEvent>(),
-    focusinEvents: new EventDispatcher<FocusEvent>(),
-    focusoutEvents: new EventDispatcher<FocusEvent>(),
+  readonly dispatchers = {
+    keydown: new EventDispatcher<KeyboardEvent>(),
+    focusin: new EventDispatcher<FocusEvent>(),
+    focusout: new EventDispatcher<FocusEvent>(),
   };
 
   // Create our state machine.
@@ -129,7 +131,7 @@ export class Listbox {
   );
 
   // Run the state through the machine.
-  readonly uiState = applyDynamicStateMachine(this.inputState, this.machine);
+  readonly uiState = applyDynamicStateMachine(this.inputState, this.machine, this.dispatchers);
 
   constructor() {
     // Sync the focused state to the DOM.
