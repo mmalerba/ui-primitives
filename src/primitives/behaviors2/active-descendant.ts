@@ -1,4 +1,5 @@
 import { signal, Signal } from '@angular/core';
+import { hasFocus } from '../base/dom';
 import { StateMachine } from '../base/state-machine';
 
 export interface ActiveDescendantOptions {}
@@ -16,7 +17,7 @@ export interface ActiveDescendantState<I = unknown> {
   readonly activeDescendantId: Signal<string | undefined>;
   readonly tabindex: Signal<0 | -1>;
   readonly disabled: Signal<boolean>;
-  readonly focused: Signal<[HTMLElement] | undefined>;
+  readonly focused: Signal<[HTMLElement | undefined]>;
 }
 
 export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items' | 'focused';
@@ -42,7 +43,7 @@ export function getActiveDescendantStateMachine(
           ...item,
           tabindex: signal(-1),
         })),
-      focused: (_, focused) => focused,
+      focused: (state, focused) => (hasFocus(state.element) ? [state.element] : focused),
     },
     events: {
       focusin: ({ focused }, state) => {

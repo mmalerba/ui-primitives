@@ -14,6 +14,7 @@ import { EventDispatcher } from '../base/event-dispatcher-2';
 import { applyDynamicStateMachine, compose } from '../base/state-machine';
 import { getActiveDescendantStateMachine } from '../behaviors2/active-descendant';
 import { getListNavigationStateMachine } from '../behaviors2/list-navigation';
+import { getRovingTabindexStateMachine } from '../behaviors2/roving-tabindex';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -106,7 +107,7 @@ export class Listbox {
     active: this.active,
     activated: signal(undefined),
     tabindex: signal<0 | -1>(-1),
-    focused: signal<[HTMLElement] | undefined>(undefined),
+    focused: signal<[HTMLElement | undefined]>([undefined]),
     activeDescendantId: signal<string | undefined>(undefined),
     items: computed(() => this.items().map((item) => item.inputState)),
     disabled: this.disabled,
@@ -126,7 +127,9 @@ export class Listbox {
   private readonly machine = computed(() =>
     compose(
       getListNavigationStateMachine({ wrap: !!this.options().wrapKeyNavigation }),
-      getActiveDescendantStateMachine()
+      this.options().useActiveDescendant
+        ? getActiveDescendantStateMachine()
+        : getRovingTabindexStateMachine()
     )
   );
 
@@ -136,8 +139,8 @@ export class Listbox {
   constructor() {
     // Sync the focused state to the DOM.
     effect(() => {
-      this.uiState().focused();
-      afterNextRender(() => this.uiState().focused()?.[0].focus(), { injector: this.injector });
+      const [focused] = this.uiState().focused();
+      afterNextRender(() => focused?.focus(), { injector: this.injector });
     });
   }
 }

@@ -5,7 +5,7 @@ export interface ListNavigationOptions {
   readonly wrap: boolean;
 }
 
-export interface ListNavigationItemState<I> {
+export interface ListNavigationItemState<I = unknown> {
   readonly identity: I;
   readonly disabled: Signal<boolean>;
 }
@@ -134,7 +134,7 @@ function clampIndex(index: number, state: ListNavigationState, options: ListNavi
 }
 
 function canActivate(index: number, state: ListNavigationState) {
-  if (state.disabled?.() || state.items()[index].disabled?.()) {
+  if (state.disabled() || state.items()[index].disabled()) {
     return false;
   }
   return true;
