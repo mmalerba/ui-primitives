@@ -1,149 +1,141 @@
-import { computed, Signal, WritableSignal } from '@angular/core';
-import { Behavior } from '../base/behavior';
-import { EventDispatcher } from '../base/event-dispatcher';
-import { PatchableSignal } from '../base/patchable-signal';
-
-export interface ListNavigationItemState<I> {
-  readonly identity: I;
-
-  readonly disabled?: Signal<boolean>;
-}
-
-export type ListNavigationState<T> = T extends ListNavigationItemState<infer I>
-  ? {
-      readonly keydownEvents: EventDispatcher<KeyboardEvent>;
-
-      readonly active: PatchableSignal<I | undefined>;
-      readonly activated: PatchableSignal<I | undefined>;
-
-      readonly items: Signal<readonly T[]>;
-      readonly disabled?: Signal<boolean>;
-      readonly orientation?: Signal<'vertical' | 'horizontal'>;
-      readonly direction?: Signal<'ltr' | 'rtl'>;
-    }
-  : never;
+import { Signal, WritableSignal } from '@angular/core';
+import { StateMachine } from '../base/state-machine';
 
 export interface ListNavigationOptions {
   readonly wrap: boolean;
 }
 
-export const DEFAULT_LIST_KEY_NAVIGATION_OPTIONS: ListNavigationOptions = {
+export interface ListNavigationItemState<I = unknown> {
+  readonly identity: I;
+  readonly disabled: Signal<boolean>;
+}
+
+export interface ListNavigationState<I = unknown> {
+  readonly activated: Signal<I | undefined>;
+  readonly active: Signal<I | undefined>;
+  readonly items: Signal<readonly ListNavigationItemState<I>[]>;
+  readonly orientation: Signal<'vertical' | 'horizontal'>;
+  readonly direction: Signal<'ltr' | 'rtl'>;
+  readonly disabled: Signal<boolean>;
+}
+
+export type ListNavigationTransitions = 'activated' | 'active';
+
+export type ListNavigationEvents = 'keydown';
+
+export const DEFAULT_LIST_NAVIGATION_OPTIONS: ListNavigationOptions = {
   wrap: false,
 };
 
-export class ListNavigationBehavior<T> extends Behavior<ListNavigationState<T>> {
-  private readonly options: ListNavigationOptions;
-
-  constructor(state: ListNavigationState<T>, options?: Partial<ListNavigationOptions>) {
-    super(state);
-    this.options = { ...DEFAULT_LIST_KEY_NAVIGATION_OPTIONS, ...options };
-  }
-
-  init() {
-    const activated = this.state.activated.patch((value) => value, {
-      connected: this.connected,
-    });
-
-    const activeIndex = computed(() =>
-      this.state.items().findIndex((i) => i.identity === this.state.active())
-    );
-
-    this.state.active.patch(
-      (active) => {
-        const item = this.state.items().find((item) => item.identity === (activated() ?? active));
-        return item?.disabled?.() ? undefined : item?.identity;
+export function getListNavigationStateMachine(
+  options: ListNavigationOptions = DEFAULT_LIST_NAVIGATION_OPTIONS
+): StateMachine<ListNavigationState, ListNavigationTransitions, ListNavigationEvents> {
+  options = { ...DEFAULT_LIST_NAVIGATION_OPTIONS, ...options };
+  return {
+    transitions: {
+      activated: (_, activated) => activated,
+      active: (state, active) => {
+        const item = state.items().find((item) => item.identity === (state.activated() ?? active));
+        return item?.disabled() ? undefined : item?.identity;
       },
-      { connected: this.connected }
-    );
+    },
+    events: {
+      keydown: ({ activated }, state, event) => handleKeydown(activated, state, event, options),
+    },
+  };
+}
 
-    this.state.keydownEvents
-      .target(this.connected)
-      .listen((event) => this.handleKeydown(event, activeIndex, activated));
-  }
-
-  private handleKeydown(
-    event: KeyboardEvent,
-    activeIndex: Signal<number>,
-    activated: WritableSignal<unknown>
-  ) {
-    const orientation = this.state.orientation?.() ?? 'vertical';
-    const direction = this.state.direction?.() ?? 'ltr';
-
-    switch (event.key) {
-      case 'ArrowDown':
-        if (orientation === 'vertical') {
-          this.activateNextItem(activeIndex, activated);
-          event.preventDefault();
+function handleKeydown<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
+  event: KeyboardEvent,
+  options: ListNavigationOptions
+) {
+  switch (event.key) {
+    case 'ArrowDown':
+      if (state.orientation() === 'vertical') {
+        activateNextItem(activated, state, options);
+        event.preventDefault();
+      }
+      break;
+    case 'ArrowUp':
+      if (state.orientation() === 'vertical') {
+        activatePreviousItem(activated, state, options);
+        event.preventDefault();
+      }
+      break;
+    case 'ArrowRight':
+      if (state.orientation() === 'horizontal') {
+        if (state.direction() === 'ltr') {
+          activateNextItem(activated, state, options);
+        } else {
+          activatePreviousItem(activated, state, options);
         }
-        break;
-      case 'ArrowUp':
-        if (orientation === 'vertical') {
-          this.activatePreviousItem(activeIndex, activated);
-          event.preventDefault();
+        event.preventDefault();
+      }
+      break;
+    case 'ArrowLeft':
+      if (state.orientation() === 'horizontal') {
+        if (state.direction() === 'ltr') {
+          activatePreviousItem(activated, state, options);
+        } else {
+          activateNextItem(activated, state, options);
         }
-        break;
-      case 'ArrowRight':
-        if (orientation === 'horizontal') {
-          if (direction === 'ltr') {
-            this.activateNextItem(activeIndex, activated);
-          } else {
-            this.activatePreviousItem(activeIndex, activated);
-          }
-          event.preventDefault();
-        }
-        break;
-      case 'ArrowLeft':
-        if (orientation === 'horizontal') {
-          if (direction === 'ltr') {
-            this.activatePreviousItem(activeIndex, activated);
-          } else {
-            this.activateNextItem(activeIndex, activated);
-          }
-          event.preventDefault();
-        }
-        break;
-    }
+        event.preventDefault();
+      }
+      break;
   }
+}
 
-  private activateNextItem(activeIndex: Signal<number>, activated: WritableSignal<unknown>) {
-    const currentIndex = activeIndex();
-    let nextIndex = currentIndex;
-    do {
-      nextIndex = this.clampIndex(nextIndex + 1);
-    } while (
-      !this.canActivate(nextIndex) &&
-      (this.options.wrap ? nextIndex !== currentIndex : nextIndex < this.state.items().length - 1)
-    );
-    if (this.canActivate(nextIndex)) {
-      activated.set(this.state.items()[nextIndex].identity);
-    }
-  }
+function getActiveIndex(state: ListNavigationState) {
+  const active = state.active();
+  return active ? state.items().findIndex((item) => item.identity === active) : -1;
+}
 
-  private activatePreviousItem(activeIndex: Signal<number>, activated: WritableSignal<unknown>) {
-    const currentIndex = activeIndex();
-    let nextIndex = currentIndex;
-    do {
-      nextIndex = this.clampIndex(nextIndex - 1);
-    } while (
-      !this.canActivate(nextIndex) &&
-      (this.options.wrap ? nextIndex !== currentIndex : nextIndex > 0)
-    );
-    if (this.canActivate(nextIndex)) {
-      activated.set(this.state.items()[nextIndex].identity);
-    }
+function activateNextItem<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
+  options: ListNavigationOptions
+) {
+  const currentIndex = getActiveIndex(state);
+  let nextIndex = currentIndex;
+  do {
+    nextIndex = clampIndex(nextIndex + 1, state, options);
+  } while (
+    !canActivate(nextIndex, state) &&
+    nextIndex !== currentIndex &&
+    nextIndex < state.items().length - 1
+  );
+  if (canActivate(nextIndex, state)) {
+    activated.set(state.items()[nextIndex].identity);
   }
+}
 
-  private clampIndex(index: number) {
-    const itemCount = this.state.items().length;
-    return this.options.wrap
-      ? (index + itemCount) % itemCount
-      : Math.min(Math.max(index, 0), itemCount - 1);
+function activatePreviousItem<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
+  options: ListNavigationOptions
+) {
+  const currentIndex = getActiveIndex(state);
+  let nextIndex = currentIndex;
+  do {
+    nextIndex = clampIndex(nextIndex - 1, state, options);
+  } while (!canActivate(nextIndex, state) && nextIndex !== currentIndex && nextIndex > 0);
+  if (canActivate(nextIndex, state)) {
+    activated.set(state.items()[nextIndex].identity);
   }
+}
 
-  private canActivate(index: number) {
-    if (this.state.disabled?.() || this.state.items()[index].disabled?.()) {
-      return false;
-    }
-    return true;
+function clampIndex(index: number, state: ListNavigationState, options: ListNavigationOptions) {
+  const itemCount = state.items().length;
+  return options.wrap
+    ? (index + itemCount) % itemCount
+    : Math.min(Math.max(index, 0), itemCount - 1);
+}
+
+function canActivate(index: number, state: ListNavigationState) {
+  if (state.disabled() || state.items()[index].disabled()) {
+    return false;
   }
+  return true;
 }

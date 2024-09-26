@@ -1,5 +1,5 @@
 import { computed, Signal, untracked, WritableSignal } from '@angular/core';
-import { EventDispatcher } from './event-dispatcher-2';
+import { EventDispatcher } from './event-dispatcher';
 import { linkedSignal } from './linked-signal';
 
 /**

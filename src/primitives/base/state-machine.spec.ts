@@ -2,8 +2,8 @@ import { signal } from '@angular/core';
 import {
   ActiveDescendantState,
   getActiveDescendantStateMachine,
-} from '../behaviors2/active-descendant';
-import { EventDispatcher } from './event-dispatcher-2';
+} from '../behaviors/active-descendant';
+import { EventDispatcher } from './event-dispatcher';
 import {
   applyDynamicStateMachine,
   applyStateMachine,
