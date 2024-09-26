@@ -15,6 +15,7 @@ import { applyDynamicStateMachine, compose } from '../base/state-machine';
 import { getActiveDescendantStateMachine } from '../behaviors2/active-descendant';
 import { getListNavigationStateMachine } from '../behaviors2/list-navigation';
 import { getRovingTabindexStateMachine } from '../behaviors2/roving-tabindex';
+import { getSelectionFollowsFocusStateMachine } from '../behaviors2/selection-follows-focus';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -129,7 +130,8 @@ export class Listbox {
       getListNavigationStateMachine({ wrap: !!this.options().wrapKeyNavigation }),
       this.options().useActiveDescendant
         ? getActiveDescendantStateMachine()
-        : getRovingTabindexStateMachine()
+        : getRovingTabindexStateMachine(),
+      getSelectionFollowsFocusStateMachine()
     )
   );
 
