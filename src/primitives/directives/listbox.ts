@@ -66,9 +66,9 @@ export class ListboxOption {
     ...this.listbox
       .uiState()
       .items()
-      .find((i) => i.identity === this.inputState.identity),
-    active: computed(() => this.listbox.uiState().active() === this.inputState.identity),
-    selected: computed(() => this.listbox.uiState().selected() === this.inputState.identity),
+      .find((i) => i.identity === this),
+    active: computed(() => this.listbox.uiState().active() === this),
+    selected: computed(() => this.listbox.uiState().selected() === this),
   }));
 }
 
@@ -106,7 +106,7 @@ export class Listbox {
     active: this.active,
     activated: signal(undefined),
     tabindex: signal<0 | -1>(-1),
-    focused: signal<HTMLElement | undefined>(undefined),
+    focused: signal<[HTMLElement] | undefined>(undefined),
     activeDescendantId: signal<string | undefined>(undefined),
     items: computed(() => this.items().map((item) => item.inputState)),
     disabled: this.disabled,
@@ -137,7 +137,7 @@ export class Listbox {
     // Sync the focused state to the DOM.
     effect(() => {
       this.uiState().focused();
-      afterNextRender(() => this.uiState().focused()?.focus(), { injector: this.injector });
+      afterNextRender(() => this.uiState().focused()?.[0].focus(), { injector: this.injector });
     });
   }
 }

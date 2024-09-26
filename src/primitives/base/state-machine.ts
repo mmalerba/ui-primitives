@@ -168,12 +168,21 @@ export function applyStateMachine<S, M extends StateMachine<S>>(
 ): S {
   type StatePropertyValue = S[keyof S];
   const result = { ...state };
+  const mutable = {} as { [P in keyof M['transitions'] & keyof S]: S[P] };
   for (const [key, transform] of Object.entries(machine.transitions)) {
     const stateProperty = key as keyof S;
     const initial = result[stateProperty] as Signal<unknown>;
-    result[stateProperty] = computed(() => transform(result, initial())) as StatePropertyValue;
+    mutable[stateProperty] = linkedSignal(() => transform(result, initial())) as StatePropertyValue;
+    result[stateProperty] = mutable[stateProperty];
   }
-  // TODO: hook up events.
+  for (const [eventType, handler] of Object.entries(machine.events) as [
+    keyof StateMachineEventDispatchers<M>,
+    (mutable: unknown, state: unknown, event: Event) => void
+  ][]) {
+    const dispatcher = events[eventType] as EventDispatcher<Event>;
+    dispatcher.listen((event) => handler(mutable, result, event));
+    // TODO: unlisten
+  }
   return result;
 }
 

@@ -5,14 +5,15 @@ export interface ListNavigationOptions {
   readonly wrap: boolean;
 }
 
-export interface ListNavigationItemState {
+export interface ListNavigationItemState<I> {
+  readonly identity: I;
   readonly disabled: Signal<boolean>;
 }
 
-export interface ListNavigationState<I extends ListNavigationItemState = ListNavigationItemState> {
+export interface ListNavigationState<I = unknown> {
   readonly activated: Signal<I | undefined>;
   readonly active: Signal<I | undefined>;
-  readonly items: Signal<readonly I[]>;
+  readonly items: Signal<readonly ListNavigationItemState<I>[]>;
   readonly orientation: Signal<'vertical' | 'horizontal'>;
   readonly direction: Signal<'ltr' | 'rtl'>;
   readonly disabled: Signal<boolean>;
@@ -34,8 +35,8 @@ export function getListNavigationStateMachine(
     transitions: {
       activated: (_, activated) => activated,
       active: (state, active) => {
-        const item = state.items().find((item) => item === (state.activated() ?? active));
-        return item?.disabled() ? undefined : item;
+        const item = state.items().find((item) => item.identity === (state.activated() ?? active));
+        return item?.disabled() ? undefined : item?.identity;
       },
     },
     events: {
@@ -44,9 +45,9 @@ export function getListNavigationStateMachine(
   };
 }
 
-function handleKeydown(
-  activated: WritableSignal<ListNavigationItemState | undefined>,
-  state: ListNavigationState,
+function handleKeydown<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
   event: KeyboardEvent,
   options: ListNavigationOptions
 ) {
@@ -88,12 +89,12 @@ function handleKeydown(
 
 function getActiveIndex(state: ListNavigationState) {
   const active = state.active();
-  return active ? state.items().indexOf(active) : -1;
+  return active ? state.items().findIndex((item) => item.identity === active) : -1;
 }
 
-function activateNextItem(
-  activated: WritableSignal<unknown>,
-  state: ListNavigationState,
+function activateNextItem<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
   options: ListNavigationOptions
 ) {
   const currentIndex = getActiveIndex(state);
@@ -106,13 +107,13 @@ function activateNextItem(
     nextIndex < state.items().length - 1
   );
   if (canActivate(nextIndex, state)) {
-    activated.set(state.items()[nextIndex]);
+    activated.set(state.items()[nextIndex].identity);
   }
 }
 
-function activatePreviousItem(
-  activated: WritableSignal<unknown>,
-  state: ListNavigationState,
+function activatePreviousItem<I>(
+  activated: WritableSignal<I>,
+  state: ListNavigationState<I>,
   options: ListNavigationOptions
 ) {
   const currentIndex = getActiveIndex(state);
@@ -121,7 +122,7 @@ function activatePreviousItem(
     nextIndex = clampIndex(nextIndex - 1, state, options);
   } while (!canActivate(nextIndex, state) && nextIndex !== currentIndex && nextIndex > 0);
   if (canActivate(nextIndex, state)) {
-    activated.set(state.items()[nextIndex]);
+    activated.set(state.items()[nextIndex].identity);
   }
 }
 
