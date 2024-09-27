@@ -54,6 +54,11 @@ export type StateMachineEventHandlers<
   ) => void;
 };
 
+/**
+ * Defines the event dispatchers required by a state machine.
+ *
+ * @template M The state machine type.
+ */
 export type StateMachineEventDispatchers<M extends StateMachine<any>> = M extends StateMachine<
   any,
   any,
@@ -161,6 +166,16 @@ export function compose<T extends [...StateMachine<any>[]]>(
   return result;
 }
 
+/**
+ * Takes a state object, a state machine, and a set of event dispatchers for the machine, and
+ * returns a new state object that is the result of applying the state machine to the input state
+ * object.
+ *
+ * @param state The state to apply the machine to
+ * @param machine The state machine to apply
+ * @param events The event dispatchers for the machine
+ * @returns The state with the machine applied
+ */
 export function applyStateMachine<S, M extends StateMachine<S>>(
   state: S,
   machine: M,
@@ -181,11 +196,20 @@ export function applyStateMachine<S, M extends StateMachine<S>>(
   ][]) {
     const dispatcher = events[eventType] as EventDispatcher<Event>;
     dispatcher.listen((event) => handler(mutable, result, event));
-    // TODO: unlisten
   }
   return result;
 }
 
+/**
+ * Takes a state object, a signal for a state machine, and a set of event dispatchers for the
+ * machine, and returns a signal of state objects that is the result of applying the state machine
+ * to the input state object.
+ *
+ * @param state The state to apply the machine to
+ * @param machine A signal of the state machine to apply
+ * @param events The event dispatchers for the machine
+ * @returns A signal of the state with the machine applied
+ */
 export function applyDynamicStateMachine<S, M extends StateMachine<S>>(
   state: S,
   stateMachine: Signal<M>,
@@ -207,13 +231,10 @@ export function applyDynamicStateMachine<S, M extends StateMachine<S>>(
           initial[stateProperty] = linkedValue as StatePropertyValue;
         }
       }
+      // TODO: disconnect event dispatcher from previous machine.
       const result = applyStateMachine(initial, machine, events);
       prev = { machine, state: result };
       return result;
     });
   });
 }
-
-// Notes (TODO):
-// - Make each of the above props a derived signal instead
-// - Pass the derived signal to the handlers for each incremental state
