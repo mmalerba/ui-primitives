@@ -1,5 +1,6 @@
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import {
+  ActiveDescendantItemState,
   ActiveDescendantState,
   getActiveDescendantStateMachine,
 } from '../behaviors/active-descendant';
@@ -12,8 +13,9 @@ import {
 } from './state-machine';
 
 function getInitialState() {
-  const items = [
+  const items: ActiveDescendantItemState[] = [
     {
+      identity: {},
       id: signal('id1'),
       tabindex: signal<0 | -1>(0),
     },
@@ -24,9 +26,9 @@ function getInitialState() {
     tabindex: signal<0 | -1>(-1),
     disabled: signal(false),
     items: signal(items),
-    active: signal(items[0]),
-    focused: signal<HTMLElement | undefined>(undefined),
-  };
+    active: signal(items[0].identity),
+    focused: signal<[HTMLElement | undefined]>([undefined]),
+  } as ActiveDescendantState & { disabled: WritableSignal<boolean> };
 }
 
 describe('state machine', () => {
@@ -94,6 +96,7 @@ describe('state machine', () => {
       transitions: {
         activeDescendantId: (_: unknown, prev: unknown) => prev,
       },
+      events: {},
     } as StateMachine<ActiveDescendantState, 'activeDescendantId'>);
 
     expect(state().activeDescendantId()).toBe('id1');
