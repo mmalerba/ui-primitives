@@ -37,11 +37,14 @@ export function getRovingTabindexStateMachine(
   options = { ...DEFAULT_ROVING_TABINDEX_OPTIONS, ...options };
   return {
     transitions: {
-      focused: (state, focused) => {
+      focused: (state) => {
         const element = state.items().find((item) => item.identity === state.active())?.element;
-        return hasFocus(state.element) ? [element] : focused;
+        return [hasFocus(state.element) ? element : undefined];
       },
       active: (state, active) => {
+        if (state.disabled()) {
+          return undefined;
+        }
         const activeItem = state.items().find((item) => item.identity === active);
         return !activeItem || activeItem.disabled()
           ? getFirstActivatableItem(state)?.identity
@@ -60,9 +63,7 @@ export function getRovingTabindexStateMachine(
     },
     events: {
       focusin: ({ focused }, state) => {
-        if (!state.disabled()) {
-          focused.set([state.items().find((item) => item.identity === state.active())?.element]);
-        }
+        focused.set([state.items().find((item) => item.identity === state.active())?.element]);
       },
       focusout: ({ focused }, state, event) => {
         const targetRemoved = !state.items().some((item) => item.element === event.target);

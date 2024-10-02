@@ -43,13 +43,11 @@ export function getActiveDescendantStateMachine(
           ...item,
           tabindex: signal(-1),
         })),
-      focused: (state, focused) => (hasFocus(state.element) ? [state.element] : focused),
+      focused: (state) => [hasFocus(state.element) ? state.element : undefined],
     },
     events: {
       focusin: ({ focused }, state) => {
-        if (!state.disabled()) {
-          focused.set([state.element]);
-        }
+        focused.set([state.element]);
       },
     },
   };

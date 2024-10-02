@@ -42,7 +42,8 @@ export function getSelectionFollowsFocusStateMachine(
     },
     events: {
       focusin: ({ active }, state) => {
-        if (!state.disabled()) {
+        const selectedItem = state.items().find((item) => item.identity === state.selected());
+        if (!state.disabled() && selectedItem) {
           active.set(state.selected());
         }
       },

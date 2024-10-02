@@ -1,7 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { Uuid } from '../../primitives/base/uuid';
 import { Listbox, ListboxOption } from '../../primitives/directives/listbox';
-
-let nextItem = 0;
 
 @Component({
   selector: 'listbox-demo',
@@ -15,6 +21,7 @@ let nextItem = 0;
   },
 })
 export class ListboxDemo {
+  uuid = inject(Uuid);
   wrap = signal(false);
   useActiveDescendant = signal(true);
   selectionFollowsFocus = signal(true);
@@ -23,7 +30,7 @@ export class ListboxDemo {
     useActiveDescendant: this.useActiveDescendant(),
     selectionFollowsFocus: this.selectionFollowsFocus(),
   }));
-  items = signal(Array.from({ length: 10 }, (_, i) => `item-${nextItem++}`));
+  items = signal(Array.from({ length: 10 }, (_, i) => `item-${this.uuid.next()}`));
   listbox = viewChild.required(Listbox);
   disabled = signal<Set<ListboxOption>>(new Set());
   overallDisabled = signal(false);
@@ -49,7 +56,7 @@ export class ListboxDemo {
       case 'a':
         if (cmdIndex !== null) {
           this.items.update((items) => {
-            items.splice(cmdIndex, 0, `added-item-${nextItem++}`);
+            items.splice(cmdIndex, 0, `added-item-${this.uuid.next()}`);
             return [...items];
           });
         }
