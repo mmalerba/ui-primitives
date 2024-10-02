@@ -1,10 +1,11 @@
 import { signal, Signal } from '@angular/core';
-import { hasFocus } from '../base/dom';
+import { getActiveElement } from '../base/dom';
 import { StateMachine } from '../base/state-machine';
 
 export interface ActiveDescendantOptions {}
 
 export interface ActiveDescendantItemState<I = unknown> {
+  readonly element: HTMLElement;
   readonly identity: I;
   readonly id: Signal<string>;
   readonly tabindex: Signal<0 | -1>;
@@ -18,11 +19,17 @@ export interface ActiveDescendantState<I = unknown> {
   readonly tabindex: Signal<0 | -1>;
   readonly disabled: Signal<boolean>;
   readonly focused: Signal<[HTMLElement | undefined]>;
+  readonly hasFocus: Signal<boolean>;
 }
 
-export type ActiveDescendantTransitions = 'activeDescendantId' | 'tabindex' | 'items' | 'focused';
+export type ActiveDescendantTransitions =
+  | 'activeDescendantId'
+  | 'tabindex'
+  | 'items'
+  | 'focused'
+  | 'hasFocus';
 
-export type ActiveDescendantEvents = 'focusin';
+export type ActiveDescendantEvents = 'focusin' | 'focusout';
 
 export const DEFAULT_ACTIVE_DESCENDANT_OPTIONS: ActiveDescendantOptions = {};
 
@@ -43,11 +50,15 @@ export function getActiveDescendantStateMachine(
           ...item,
           tabindex: signal(-1),
         })),
-      focused: (state) => [hasFocus(state.element) ? state.element : undefined],
+      focused: (state) => [state.hasFocus() ? state.element : undefined],
+      hasFocus: (state) => state.element.contains(getActiveElement()),
     },
     events: {
-      focusin: ({ focused }, state) => {
-        focused.set([state.element]);
+      focusin: ({ hasFocus }) => {
+        hasFocus.set(true);
+      },
+      focusout: ({ hasFocus }) => {
+        hasFocus.set(false);
       },
     },
   };

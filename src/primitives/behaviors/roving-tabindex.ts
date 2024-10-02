@@ -1,5 +1,5 @@
 import { computed, Signal } from '@angular/core';
-import { hasFocus } from '../base/dom';
+import { getActiveElement } from '../base/dom';
 import { StateMachine } from '../base/state-machine';
 
 export interface RovingTabindexOptions {}
@@ -18,6 +18,7 @@ export interface RovingTabindexState<I = unknown> {
   readonly tabindex: Signal<number | undefined>;
   readonly activeDescendantId: Signal<string | undefined>;
   readonly disabled: Signal<boolean>;
+  readonly hasFocus: Signal<boolean>;
 }
 
 export type RovingTabindexTransitions =
@@ -25,7 +26,8 @@ export type RovingTabindexTransitions =
   | 'active'
   | 'tabindex'
   | 'activeDescendantId'
-  | 'items';
+  | 'items'
+  | 'hasFocus';
 
 export type RovingTabindexEvents = 'focusin' | 'focusout';
 
@@ -38,8 +40,9 @@ export function getRovingTabindexStateMachine(
   return {
     transitions: {
       focused: (state) => {
+        state.active();
         const element = state.items().find((item) => item.identity === state.active())?.element;
-        return [hasFocus(state.element) ? element : undefined];
+        return [state.hasFocus() ? element : undefined];
       },
       active: (state, active) => {
         if (state.disabled()) {
@@ -60,15 +63,22 @@ export function getRovingTabindexStateMachine(
           ),
         }));
       },
+      hasFocus: (state) => state.element.contains(getActiveElement()),
     },
     events: {
-      focusin: ({ focused }, state) => {
-        focused.set([state.items().find((item) => item.identity === state.active())?.element]);
+      focusin: ({ hasFocus }) => {
+        hasFocus.set(true);
       },
-      focusout: ({ focused }, state, event) => {
-        const targetRemoved = !state.items().some((item) => item.element === event.target);
-        if (targetRemoved) {
-          focused.set([getFirstActivatableItem(state)?.element]);
+      focusout: async ({ hasFocus }, state) => {
+        hasFocus.set(false);
+
+        // Check if focus was lost due to the active element being removed from the DOM.
+        // If so, recapture focus.
+        const originalActive = state.active();
+        await Promise.resolve();
+        const newActive = state.active();
+        if (newActive && newActive !== originalActive) {
+          hasFocus.set(true);
         }
       },
     },

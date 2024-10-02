@@ -58,9 +58,7 @@ export class ListboxOption {
   readonly inputState = {
     identity: this as ListboxOption,
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
-
     tabindex: signal<number | undefined>(undefined),
-
     disabled: this.disabled,
     id: this.id,
   };
@@ -105,7 +103,6 @@ export class Listbox {
   // Set up the input state for our state machine.
   private readonly inputState = {
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
-
     active: this.active,
     activated: signal(undefined),
     tabindex: signal<0 | -1>(-1),
@@ -114,9 +111,9 @@ export class Listbox {
     items: computed(() => this.items().map((item) => item.inputState)),
     disabled: this.disabled,
     selected: this.selected,
-
     orientation: this.orientation,
     direction: this.directionality,
+    hasFocus: signal(false),
   };
 
   readonly dispatchers = {
