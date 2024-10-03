@@ -10,13 +10,14 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { applyDynamicBehavior, compose } from '../base/behavior';
 import { EventDispatcher } from '../base/event-dispatcher';
-import { applyDynamicStateMachine, compose } from '../base/state-machine';
-import { getActiveDescendantStateMachine } from '../behaviors/active-descendant';
-import { getListNavigationStateMachine } from '../behaviors/list-navigation';
-import { getRovingTabindexStateMachine } from '../behaviors/roving-tabindex';
-import { getSelectionFollowsFocusStateMachine } from '../behaviors/selection-follows-focus';
-import { getSelectionOnCommitStateMachine } from '../behaviors/selection-on-commit';
+import { linkedSignal } from '../base/linked-signal';
+import { getActiveDescendantBehavior } from '../behaviors/active-descendant';
+import { getListNavigationBehavior } from '../behaviors/list-navigation';
+import { getRovingTabindexBehavior } from '../behaviors/roving-tabindex';
+import { getSelectionFollowsFocusBehavior } from '../behaviors/selection-follows-focus';
+import { getSelectionOnCommitBehavior } from '../behaviors/selection-on-commit';
 
 export interface ListboxOptions {
   wrapKeyNavigation: boolean;
@@ -103,17 +104,18 @@ export class Listbox {
   // Set up the input state for our state machine.
   private readonly inputState = {
     element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
-    active: this.active,
-    activated: signal(undefined),
-    tabindex: signal<0 | -1>(-1),
-    focused: signal<[HTMLElement | undefined]>([undefined]),
-    activeDescendantId: signal<string | undefined>(undefined),
+    tabindex: computed<0 | -1>(() => -1),
+    focused: computed<[HTMLElement | undefined]>(() => [undefined]),
+    activeDescendantId: computed<string | undefined>(() => undefined),
     items: computed(() => this.items().map((item) => item.inputState)),
+    active: this.active,
     disabled: this.disabled,
-    selected: this.selected,
     orientation: this.orientation,
     direction: this.directionality,
+
+    activated: signal(undefined),
     hasFocus: signal(false),
+    selected: linkedSignal(this.selected),
   };
 
   readonly dispatchers = {
@@ -123,20 +125,20 @@ export class Listbox {
   };
 
   // Create our state machine.
-  private readonly machine = computed(() =>
+  private readonly behavior = computed(() =>
     compose(
-      getListNavigationStateMachine({ wrap: !!this.options().wrapKeyNavigation }),
+      getListNavigationBehavior({ wrap: !!this.options().wrapKeyNavigation }),
       this.options().useActiveDescendant
-        ? getActiveDescendantStateMachine()
-        : getRovingTabindexStateMachine(),
+        ? getActiveDescendantBehavior()
+        : getRovingTabindexBehavior(),
       this.options().selectionFollowsFocus
-        ? getSelectionFollowsFocusStateMachine()
-        : getSelectionOnCommitStateMachine()
+        ? getSelectionFollowsFocusBehavior()
+        : getSelectionOnCommitBehavior()
     )
   );
 
   // Run the state through the machine.
-  readonly uiState = applyDynamicStateMachine(this.inputState, this.machine, this.dispatchers);
+  readonly uiState = applyDynamicBehavior(this.inputState, this.behavior, this.dispatchers);
 
   constructor() {
     // Sync the focused state to the DOM.

@@ -1,6 +1,6 @@
-import { computed, Signal } from '@angular/core';
+import { computed, Signal, WritableSignal } from '@angular/core';
+import { Behavior } from '../base/behavior';
 import { getActiveElement } from '../base/dom';
-import { StateMachine } from '../base/state-machine';
 
 export interface RovingTabindexOptions {}
 
@@ -18,7 +18,8 @@ export interface RovingTabindexState<I = unknown> {
   readonly tabindex: Signal<number | undefined>;
   readonly activeDescendantId: Signal<string | undefined>;
   readonly disabled: Signal<boolean>;
-  readonly hasFocus: Signal<boolean>;
+
+  readonly hasFocus: WritableSignal<boolean>;
 }
 
 export type RovingTabindexTransitions =
@@ -33,12 +34,12 @@ export type RovingTabindexEvents = 'focusin' | 'focusout';
 
 export const DEFAULT_ROVING_TABINDEX_OPTIONS: RovingTabindexOptions = {};
 
-export function getRovingTabindexStateMachine(
+export function getRovingTabindexBehavior(
   options: RovingTabindexOptions = DEFAULT_ROVING_TABINDEX_OPTIONS
-): StateMachine<RovingTabindexState, RovingTabindexTransitions, RovingTabindexEvents> {
+): Behavior<RovingTabindexState, RovingTabindexTransitions, RovingTabindexEvents> {
   options = { ...DEFAULT_ROVING_TABINDEX_OPTIONS, ...options };
   return {
-    transitions: {
+    derivations: {
       focused: (state) => {
         state.active();
         const element = state.items().find((item) => item.identity === state.active())?.element;
@@ -69,8 +70,8 @@ export function getRovingTabindexStateMachine(
       focusin: ({ hasFocus }) => {
         hasFocus.set(true);
       },
-      focusout: async ({ hasFocus }, state) => {
-        hasFocus.set(false);
+      focusout: async (state) => {
+        state.hasFocus.set(false);
 
         // Check if focus was lost due to the active element being removed from the DOM.
         // If so, recapture focus.
@@ -78,7 +79,7 @@ export function getRovingTabindexStateMachine(
         await Promise.resolve();
         const newActive = state.active();
         if (newActive && newActive !== originalActive) {
-          hasFocus.set(true);
+          state.hasFocus.set(true);
         }
       },
     },

@@ -1,5 +1,5 @@
-import { Signal } from '@angular/core';
-import { StateMachine } from '../base/state-machine';
+import { Signal, WritableSignal } from '@angular/core';
+import { Behavior } from '../base/behavior';
 
 export interface SelectionFollowsFocusOptions {}
 
@@ -12,39 +12,38 @@ export interface SelectionFollowsFocusState<I = unknown> {
   readonly element: HTMLElement;
   readonly items: Signal<readonly SelectionFollowsFocusItemState<I>[]>;
   readonly selected: Signal<I | undefined>;
-  readonly activated: Signal<I | undefined>;
-  readonly active: Signal<I | undefined>;
   readonly disabled: Signal<boolean>;
+
+  readonly activated: WritableSignal<I | undefined>;
 }
 
-export type SelectionFollowsFocusTransitions = 'selected' | 'disabled' | 'active';
+export type SelectionFollowsFocusTransitions = 'selected' | 'disabled';
 
 export type SelectionFollowsFocusEvents = 'focusin';
 
 export const DEFAULT_SELECTION_FOLLOWS_FOCUS_OPTIONS: SelectionFollowsFocusOptions = {};
 
-export function getSelectionFollowsFocusStateMachine(
+export function getSelectionFollowsFocusBehavior(
   options: SelectionFollowsFocusOptions = DEFAULT_SELECTION_FOLLOWS_FOCUS_OPTIONS
-): StateMachine<
+): Behavior<
   SelectionFollowsFocusState,
   SelectionFollowsFocusTransitions,
   SelectionFollowsFocusEvents
 > {
   options = { ...DEFAULT_SELECTION_FOLLOWS_FOCUS_OPTIONS, ...options };
   return {
-    transitions: {
+    derivations: {
       selected: (state, selected) => state.activated() ?? selected,
       disabled: (state, disabled) => {
         const selectedItem = state.items().find((item) => item.identity === state.selected());
         return disabled || !!selectedItem?.disabled();
       },
-      active: (_, active) => active,
     },
     events: {
-      focusin: ({ active }, state) => {
+      focusin: (state) => {
         const selectedItem = state.items().find((item) => item.identity === state.selected());
         if (!state.disabled() && selectedItem) {
-          active.set(state.selected());
+          state.activated.set(state.selected());
         }
       },
     },

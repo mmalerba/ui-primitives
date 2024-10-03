@@ -13,4 +13,8 @@ export class EventDispatcher<T extends Event> {
       listener(event);
     }
   }
+
+  reset() {
+    this.listeners.clear();
+  }
 }

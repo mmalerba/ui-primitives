@@ -1,6 +1,6 @@
-import { signal, Signal } from '@angular/core';
+import { signal, Signal, WritableSignal } from '@angular/core';
+import { Behavior } from '../base/behavior';
 import { getActiveElement } from '../base/dom';
-import { StateMachine } from '../base/state-machine';
 
 export interface ActiveDescendantOptions {}
 
@@ -19,7 +19,8 @@ export interface ActiveDescendantState<I = unknown> {
   readonly tabindex: Signal<0 | -1>;
   readonly disabled: Signal<boolean>;
   readonly focused: Signal<[HTMLElement | undefined]>;
-  readonly hasFocus: Signal<boolean>;
+
+  readonly hasFocus: WritableSignal<boolean>;
 }
 
 export type ActiveDescendantTransitions =
@@ -33,12 +34,12 @@ export type ActiveDescendantEvents = 'focusin' | 'focusout';
 
 export const DEFAULT_ACTIVE_DESCENDANT_OPTIONS: ActiveDescendantOptions = {};
 
-export function getActiveDescendantStateMachine(
+export function getActiveDescendantBehavior(
   options: ActiveDescendantOptions = DEFAULT_ACTIVE_DESCENDANT_OPTIONS
-): StateMachine<ActiveDescendantState, ActiveDescendantTransitions, ActiveDescendantEvents> {
+): Behavior<ActiveDescendantState, ActiveDescendantTransitions, ActiveDescendantEvents> {
   options = { ...DEFAULT_ACTIVE_DESCENDANT_OPTIONS, ...options };
   return {
-    transitions: {
+    derivations: {
       activeDescendantId: (state) =>
         state
           .items()

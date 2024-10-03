@@ -1,5 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { StateMachine } from '../base/state-machine';
+import { Behavior } from '../base/behavior';
 
 export interface SelectionOnCommitOptions {}
 
@@ -11,40 +11,36 @@ export interface SelectionOnCommitItemState<I = unknown> {
 export interface SelectionOnCommitState<I = unknown> {
   readonly element: HTMLElement;
   readonly items: Signal<readonly SelectionOnCommitItemState<I>[]>;
-  readonly selected: Signal<I | undefined>;
   readonly active: Signal<I | undefined>;
   readonly disabled: Signal<boolean>;
+
+  readonly selected: WritableSignal<I | undefined>;
 }
 
-export type SelectionOnCommitTransitions = 'selected' | 'disabled';
+export type SelectionOnCommitTransitions = 'disabled';
 
 export type SelectionOnCommitEvents = 'keydown';
 
 export const DEFAULT_SELECTION_ON_COMMIT_OPTIONS: SelectionOnCommitOptions = {};
 
-export function getSelectionOnCommitStateMachine(
+export function getSelectionOnCommitBehavior(
   options: SelectionOnCommitOptions = DEFAULT_SELECTION_ON_COMMIT_OPTIONS
-): StateMachine<SelectionOnCommitState, SelectionOnCommitTransitions, SelectionOnCommitEvents> {
+): Behavior<SelectionOnCommitState, SelectionOnCommitTransitions, SelectionOnCommitEvents> {
   options = { ...DEFAULT_SELECTION_ON_COMMIT_OPTIONS, ...options };
   return {
-    transitions: {
-      selected: (_, selected) => selected,
+    derivations: {
       disabled: (state, disabled) => {
         const selectedItem = state.items().find((item) => item.identity === state.selected());
         return disabled || !!selectedItem?.disabled();
       },
     },
     events: {
-      keydown: ({ selected }, state, event) => handleKeydown(selected, state, event),
+      keydown: (state, event) => handleKeydown(state, event),
     },
   };
 }
 
-function handleKeydown<I>(
-  selected: WritableSignal<I | undefined>,
-  state: SelectionOnCommitState<I>,
-  event: KeyboardEvent
-) {
+function handleKeydown<I>(state: SelectionOnCommitState<I>, event: KeyboardEvent) {
   if (state.disabled()) {
     return;
   }
@@ -61,7 +57,7 @@ function handleKeydown<I>(
       );
 
       if (canSelectActiveItem) {
-        selected.set(state.active());
+        state.selected.set(state.active());
       }
       break;
   }
