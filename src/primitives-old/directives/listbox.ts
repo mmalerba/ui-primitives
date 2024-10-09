@@ -10,9 +10,9 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { linkedSignal } from '../../primitives/base/linked-signal';
 import { applyDynamicBehavior, compose } from '../base/behavior';
 import { EventDispatcher } from '../base/event-dispatcher';
-import { linkedSignal } from '../base/linked-signal';
 import { getActiveDescendantBehavior } from '../behaviors/active-descendant';
 import { getListNavigationBehavior } from '../behaviors/list-navigation';
 import { getRovingTabindexBehavior } from '../behaviors/roving-tabindex';

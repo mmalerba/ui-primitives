@@ -6,8 +6,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { Listbox, ListboxOption } from '../../primitives-old/directives/listbox';
 import { Uuid } from '../../primitives/base/uuid';
-import { Listbox, ListboxOption } from '../../primitives/directives/listbox';
 
 @Component({
   selector: 'listbox-demo',
