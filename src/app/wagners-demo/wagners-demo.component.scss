@@ -1,0 +1,17 @@
+li {
+  border-radius: 5px;
+  border: 2px solid transparent;
+}
+
+li[tabindex="0"] {
+  border-color: black;
+  background-color: whitesmoke;
+}
+
+li:focus {
+  outline: -webkit-focus-ring-color auto 1px;
+}
+
+li.active {
+  background-color: antiquewhite;
+}

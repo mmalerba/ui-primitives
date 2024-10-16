@@ -1,72 +1,81 @@
 import { computed, Signal, signal, WritableSignal } from '@angular/core';
 import { Listbox, ListboxOption, ListboxState } from './interfaces';
-import * as ListOption from './composables/list-option';
+import { ActiveDescendant, RovingTabindex } from './composables/focus-strategy';
+import { FollowFocus } from './composables/selection-strategy/strategies/follow-focus';
+import { IndependentFocus } from './composables/selection-strategy/strategies/independent-focus';
+
+interface ListboxProps {
+  wrap?: Signal<boolean>;
+  multi?: Signal<boolean>;
+  rovingFocus?: Signal<boolean>;
+  followFocus?: Signal<boolean>;
+  activeIndex?: Signal<number>;
+  selectedIndices?: Signal<number[]>;
+}
+
+interface ListboxOptionProps {
+  focus?: () => void;
+  disabled?: Signal<boolean>;
+}
 
 export function createListbox(
   options: Signal<ListboxOption[]>,
-  opts?: {
-    wrap?: Signal<boolean>;
-    multi?: Signal<boolean>;
-    rovingFocus?: Signal<boolean>;
-    followFocus?: Signal<boolean>;
-  }
+  opts?: ListboxProps
 ): Listbox {
-  const wrap = opts?.wrap || signal(true);
-  const multi = opts?.multi || signal(false);
-  const rovingFocus = opts?.rovingFocus || signal(true);
-  const followFocus = opts?.followFocus || signal(true);
-  const state = createListboxState(rovingFocus());
-  const activeId = computed(() => rovingFocus() ? undefined : state().activeOption?.id());
-  const tabindex = computed(() => rovingFocus() ? -1 : 0);
+  const wrap = opts?.wrap ?? signal(true);
+  const multi = opts?.multi ?? signal(false);
+
+  const rovingFocus = opts?.rovingFocus ?? signal(true);
+  const followFocus = opts?.followFocus ?? signal(true);
+  const selectedIndices = opts?.selectedIndices ?? signal([]);
+
+  const focusStrategy = opts?.rovingFocus
+    ? RovingTabindex.getParentProps({ children: options, selectedIndices })
+    : ActiveDescendant.getParentProps({ children: options, selectedIndices });
+
+  const selectionStrategy = opts?.followFocus
+    ? FollowFocus.getParentProps({ children: options, activeIndex: focusStrategy.activeIndex })
+    : IndependentFocus.getParentProps({ children: options, activeIndex: focusStrategy.activeIndex });
+
   return {
     wrap,
     multi,
     options,
     rovingFocus,
     followFocus,
-    activeId,
-    tabindex,
-    state,
+    activeId: focusStrategy.activeId,
+    tabindex: focusStrategy.tabindex,
+    state: {
+      activeIndex: focusStrategy.activeIndex,
+      selectedIndices: selectionStrategy.selectedIndices,
+    },
   };
 }
 
 let counter = 0;
 
-export function createListboxOption(
-  listbox: Listbox,
-  opts?: { focus?: () => void; disabled?: Signal<boolean>; }
-): ListboxOption {
+export function createListboxOption(listbox: Listbox, opts?: ListboxOptionProps): ListboxOption {
   const focus = opts?.focus || (() => {});
   const disabled = opts?.disabled || signal(false);
-  const option: Partial<ListboxOption> = { focus, disabled };
-  option.id = signal(`${counter++}`);
-  option.index = computed(() => listbox.options().indexOf(option as ListboxOption)!);
 
-  option.active = computed(() => {
-    const index = option.index!();
-    const activeIndex = listbox.state().activeIndex;
-    const rovingFocus = listbox.rovingFocus();
+  const option: Partial<ListboxOption> = {};
+  const index = computed(() => listbox.options().indexOf(option as ListboxOption));
 
-    return activeIndex === undefined && rovingFocus
-      ? index === 0
-      : index === activeIndex;
-  });
+  const focusStrategy = listbox.rovingFocus()
+    ? RovingTabindex.getChildProps({ index, disabled, ...listbox.state })
+    : ActiveDescendant.getChildProps({ index, disabled, ...listbox.state });
 
-  option.selected = computed(() => {
-    const index = option.index!();
-    const rovingFocus = listbox.rovingFocus();
-    const followFocus = listbox.followFocus();
-    const selectedIndex = listbox.state().selectedIndex;
-    
-    return selectedIndex === undefined && rovingFocus && followFocus
-      ? index === 0
-      : index === selectedIndex;
-  });
+  const selectionStrategy = listbox.followFocus()
+    ? FollowFocus.getChildProps({ index, ...listbox.state })
+    : IndependentFocus.getChildProps({ index, ...listbox.state });
 
-  option.tabindex = ListOption.tabindex(listbox.rovingFocus, option.active);
-  return option as ListboxOption;
-}
-
-function createListboxState(rovingFocus: boolean): WritableSignal<ListboxState> {
-  return signal({});
+  return {
+    focus,
+    index,
+    disabled,
+    active: focusStrategy.active,
+    tabindex: focusStrategy.tabindex,
+    selected: selectionStrategy.selected,
+    id: signal(`${counter++}`),
+  }
 }

@@ -1,40 +1,28 @@
 import { getNextOption, getPrevOption } from './composables/list';
-import { getState } from './getters';
 import { Listbox, ListboxState } from './interfaces';
 
 export function onKeyDown(event: KeyboardEvent, listbox: Listbox) {
-  const state = getState(listbox);
-
   switch (event.key) {
     case 'ArrowDown':
-      return onArrowDown(listbox, state);
+      return onArrowDown(listbox);
     case 'ArrowUp':
-      return onArrowUp(listbox, state);
+      return onArrowUp(listbox);
     default:
-      return state;
+      return listbox.state;
   }
 }
 
-function onArrowUp(listbox: Listbox, state: ListboxState): ListboxState {
-  const activeOption = getPrevOption(listbox, state);
-  const selectedOption = listbox.followFocus() ? activeOption : state.selectedOption;
-
+function onArrowUp(listbox: Listbox): ListboxState {
   return {
-    activeOption,
-    activeIndex: activeOption.index(),
-    selectedOption,
-    selectedIndex: selectedOption?.index(),
+    activeIndex: getPrevOption(listbox).index(),
+    selectedIndex: state.selectedIndex,
   }
 }
 
-function onArrowDown(listbox: Listbox, state: ListboxState): ListboxState {
-  const activeOption = getNextOption(listbox, state);
-  const selectedOption = listbox.followFocus() ? activeOption : state.selectedOption;
-
+function onArrowDown(listbox: Listbox): ListboxState {
+  const state = listbox.state();
   return {
-    activeOption,
-    activeIndex: activeOption.index(),
-    selectedOption,
-    selectedIndex: selectedOption?.index(),
+    activeIndex: getNextOption(listbox, state).index(),
+    selectedIndex: state.selectedIndex,
   }
 }

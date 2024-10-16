@@ -1,4 +1,4 @@
-import { computed, contentChildren, Directive, ElementRef, inject, input } from '@angular/core';
+import { computed, contentChildren, Directive, ElementRef, inject, input, model } from '@angular/core';
 import { createListbox, createListboxOption } from './builders';
 import { handleKeyDown } from './setters';
 
@@ -9,19 +9,20 @@ import { handleKeyDown } from './setters';
   host: {
     role: 'listbox',
     '(keydown)': 'onKeyDown($event)',
-    '[attr.tabindex]': 'uiState.tabindex()',
-    '[attr.aria-activedescendant]': 'uiState.activeId()',
+    '[attr.tabindex]': 'props.tabindex()',
+    '[attr.aria-activedescendant]': 'props.activeId()',
   },
 })
 export class uiListbox {
   uiListboxOptions = contentChildren(uiListboxOption);
-  options = computed(() => this.uiListboxOptions().map((option) => option.uiState));
+  options = computed(() => this.uiListboxOptions().map((option) => option.props));
   rovingFocus = input(false);
   followFocus = input(false);
-  uiState = createListbox(this.options, this);
+
+  props = createListbox(this.options, this);
 
   onKeyDown(event: KeyboardEvent) {
-    handleKeyDown(event, this.uiState);
+    handleKeyDown(event, this.props);
   }
 }
 
@@ -31,15 +32,15 @@ export class uiListbox {
   exportAs: 'uiListboxOption',
   host: {
     role: 'option',
-    '[attr.id]': 'uiState.id()',
-    '[attr.disabled]': 'uiState.disabled()',
-    '[attr.tabindex]': 'uiState.tabindex()',
-    '[attr.aria-selected]': 'uiState.selected()',
+    '[attr.id]': 'props.id()',
+    '[attr.disabled]': 'props.disabled()',
+    '[attr.tabindex]': 'props.tabindex()',
+    '[attr.aria-selected]': 'props.selected()',
   },
 })
 export class uiListboxOption {
   listbox = inject(uiListbox);
   host = inject(ElementRef).nativeElement;
   focus = () => this.host.focus();
-  uiState = createListboxOption(this.listbox.uiState, this);
+  props = createListboxOption(this.listbox.props, this);
 }

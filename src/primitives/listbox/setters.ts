@@ -2,13 +2,14 @@ import { Listbox, ListboxState } from "./interfaces";
 import { onKeyDown } from "./key-handlers";
 
 export function updateState(listbox: Listbox, newState: ListboxState) {
-  const oldState = listbox.state();
+  const oldState = listbox.state;
 
-  if (oldState.activeOption !== newState.activeOption && listbox.rovingFocus()) {
-    newState.activeOption?.focus();
+  if (oldState.activeIndex !== newState.activeIndex && listbox.rovingFocus()) {
+    listbox.options()[newState.activeIndex()]?.focus();
   }
 
-  listbox.state.set(newState);
+  listbox.state.activeIndex.set(newState.activeIndex());
+  listbox.state.selectedIndex.set(newState.selectedIndex());
 }
 
 export function handleKeyDown(event: KeyboardEvent, listbox: Listbox) {

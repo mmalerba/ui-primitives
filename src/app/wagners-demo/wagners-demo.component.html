@@ -1,0 +1,8 @@
+<ul [rovingFocus]="true" #list="uiListbox" uiListbox>
+  <li [class.active]="list.uiState.state().activeIndex === 0" uiListboxOption>Option 1</li>
+  <li [class.active]="list.uiState.state().activeIndex === 1" uiListboxOption>Option 2</li>
+  <li [class.active]="list.uiState.state().activeIndex === 2" uiListboxOption>Option 3</li>
+</ul>
+
+<p>Active index: {{list.uiState.state().activeIndex}}</p>
+<p>Selected index: {{list.uiState.state().selectedIndex}}</p>
