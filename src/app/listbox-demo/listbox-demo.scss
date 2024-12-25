@@ -1,35 +1,7 @@
-li::marker {
-  color: transparent;
-}
-
 .active {
-  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid red;
 }
 
-ul:focus-within .active {
-  background: rgba(0, 0, 255, 0.15);
-}
-
-[disabled="true"] {
-  opacity: 0.5;
-}
-
-[aria-selected="true"],
-ul:focus-within [aria-selected="true"] {
-  color: blue;
-  font-weight: bold;
-
-  &::marker {
-    color: blue;
-  }
-}
-
-.command-target::before {
-  position: absolute;
-  left: 10px;
-  content: ">";
-}
-
-.command {
-  background: yellow;
+[tabindex="0"] {
+  background: rgba(255, 0, 0, 0.5);
 }

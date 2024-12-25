@@ -1,30 +1,9 @@
-<p>
-  Press 'f' to toggle focus management strategy:
-  <b>{{useActiveDescendant() ? 'aria-activedescendant' : 'roving tabindex'}}</b>
-</p>
-<p>Press 'w' to toggle key navigation wrapping: <b>{{wrap() ? 'wrap' : 'no wrap'}}</b></p>
-<p>
-  Press 's' to toggle single selection interaction style:
-  <b>{{selectionFollowsFocus() ? 'selection follows focus' : 'selection on commit'}}</b>
-</p>
-<p>Press 'o' to toggle disabled state of the overall listbox</p>
-<p>Type an index number to target a command at that item</p>
-<p>Press 'c' to clear the targeted index</p>
-<p>Press 'a' to add an item before the targeted index</p>
-<p>Press 'r' to remove item at the targeted index</p>
-<p>Press 'd' to toggle disabled state of the item at the targeted index</p>
-<ul tbd-listbox [options]="options()" [disabled]="overallDisabled()">
-  @for (item of items(); track item; let i = $index) {
-  <li
-    tbd-listbox-option
-    #option="ListboxOption"
-    [disabled]="disabled().has(option)"
-    [class.command-target]="cmdIndex() === i"
-  >
-    <span>{{i}}) {{ item }}</span>
-  </li>
+<div rovingTabindex [activeIndex]="activeIndex()">
+  @for (item of items(); track item) {
+  <div rovingTabindexItem>{{item}}</div>
   }
-</ul>
-@if (cmd()) {
-<p class="command">Selected for command: {{cmd()}}</p>
-}
+</div>
+<button (click)="activeIndex.set((activeIndex() + 1) % items().length)">
+  active: {{activeIndex()}}
+</button>
+<button (click)="toggleExtra()">toggle extra item</button>
