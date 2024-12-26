@@ -1,5 +1,5 @@
 import { Signal } from '@angular/core';
-import { Behavior, State } from '../base/behavior';
+import { Behavior, State } from '../../base/behavior';
 
 export interface FocusBehaviorInputs {
   readonly activeIndex: Signal<number>;
@@ -26,9 +26,9 @@ export const focusBehavior: Behavior<
   FocusBehaviorItemOutputs
 > = {
   computations: {
-    tabindex: () => 0,
+    tabindex: (): 0 | -1 => 0,
   },
   itemComputations: {
-    tabindex: ({ parent, index }) => (parent.activeIndex() === index() ? 0 : -1),
+    tabindex: ({ parent, index }): 0 | -1 => (parent.activeIndex() === index() ? 0 : -1),
   },
 };

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import {
   RovingTabindexDirective,
   RovingTabindexItemDirective,
-} from '../../primitives/directives/roving-tabindex';
+} from '../../ng-a11y/roving-tabindex';
 
 let nextItem = 0;
 
