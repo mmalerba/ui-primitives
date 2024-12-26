@@ -12,11 +12,11 @@ import {
 } from '@angular/core';
 import { Behavior, State } from '../base/behavior';
 import {
-  rovingTabindexBehavior,
-  RovingTabindexItemInputs,
-  RovingTabindexItemState,
-  RovingTabindexState,
-} from '../behaviors/roving-tabindex';
+  focusBehavior,
+  FocusBehaviorItemInputs,
+  FocusItemState,
+  FocusState,
+} from '../behaviors/focus-behavior';
 
 @Directive({
   selector: '[rovingTabindex]',
@@ -30,11 +30,11 @@ export class RovingTabindexDirective {
 
   items = contentChildren(RovingTabindexItemDirective);
 
-  state: RovingTabindexState;
-  itemStates: Signal<Map<RovingTabindexItemInputs, RovingTabindexItemState>>;
+  state: FocusState;
+  itemStates: Signal<Map<FocusBehaviorItemInputs, FocusItemState>>;
 
   constructor() {
-    const [state, itemStates] = applyBehavior(rovingTabindexBehavior, this, this.items);
+    const [state, itemStates] = applyBehavior(focusBehavior, this, this.items);
     this.state = state;
     this.itemStates = itemStates;
   }
@@ -77,6 +77,10 @@ function applyBehavior<PI extends State, CI extends State, PO extends State, CO 
         inputValue: parentInputs[property]?.(),
       }),
     );
+    // Make the state property writable if it's marked as such in the behavior.
+    if ((behavior.makeWritable?.parent as Record<string, unknown>)?.[property]) {
+      (parentState as Record<string, unknown>)[property] = linkedSignal(parentState[property]);
+    }
   }
   // Create a map of child inputs to child state. This allows us to maintain the same set of state
   // for a child even as it moves around in the list of items.
@@ -125,6 +129,10 @@ function applyBehavior<PI extends State, CI extends State, PO extends State, CO 
                 inputValue: itemInputs[property]?.(),
               }),
             );
+            // Make the state property writable if it's marked as such in the behavior.
+            if ((behavior.makeWritable?.item as Record<string, unknown>)?.[property]) {
+              (itemState as Record<string, unknown>)[property] = linkedSignal(itemState[property]);
+            }
           }
           return [itemInputs, itemState] as const;
         }),

@@ -1,4 +1,4 @@
-import { Signal } from '@angular/core';
+import { Signal, WritableSignal } from '@angular/core';
 
 export type State<
   I extends Record<PropertyKey, any> = Record<PropertyKey, any>,
@@ -19,17 +19,52 @@ export type StateComputations<A extends Record<string, any>, I extends State, O 
   [K in Exclude<keyof O, keyof I>]?: O[K] extends Signal<any>
     ? (args: A) => UnwrapSignal<O[K]>
     : never;
+} & {
+  [K in keyof O]: any;
 };
 
-export interface Behavior<PI extends State, CI extends State, PO extends State, CO extends State> {
-  computations?: StateComputations<
-    { self: State<PI, PO>; items: Signal<readonly State<CI, CO>[]> },
-    PI,
-    PO
-  >;
-  itemComputations?: StateComputations<
-    { self: State<CI, CO>; parent: State<PI, PO>; index: Signal<number> },
-    CI,
-    CO
-  >;
-}
+export type PickWritable<T extends State> = {
+  [K in keyof T as T[K] extends WritableSignal<any> ? K : never]: T[K];
+};
+
+export type MakeWritableBlock<PO extends State, CO extends State> = ({} extends PickWritable<PO>
+  ? { parent?: undefined }
+  : {
+      parent: { [K in keyof PickWritable<PO>]: true } & {
+        [K in keyof Omit<PO, keyof PickWritable<PO>>]?: undefined;
+      };
+    }) &
+  ({} extends PickWritable<CO>
+    ? { item?: undefined }
+    : {
+        item: { [K in keyof PickWritable<CO>]: true } & {
+          [K in keyof Omit<CO, keyof PickWritable<CO>>]?: undefined;
+        };
+      });
+
+export type Behavior<
+  PI extends State,
+  CI extends State,
+  PO extends State,
+  CO extends State,
+> = ({} extends PO
+  ? { computations?: undefined }
+  : {
+      computations: StateComputations<
+        { self: State<PI, PO>; items: Signal<readonly State<CI, CO>[]> },
+        PI,
+        PO
+      >;
+    }) &
+  ({} extends CO
+    ? { itemComputations?: undefined }
+    : {
+        itemComputations: StateComputations<
+          { self: State<CI, CO>; parent: State<PI, PO>; index: Signal<number> },
+          CI,
+          CO
+        >;
+      }) &
+  ({} extends PickWritable<PO & CO>
+    ? { makeWritable?: undefined }
+    : { makeWritable: MakeWritableBlock<PO, CO> });
