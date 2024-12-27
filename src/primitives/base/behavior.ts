@@ -13,7 +13,7 @@ export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
 
 export type StateComputations<A extends Record<string, any>, I extends State, O extends State> = {
   [K in keyof (I | O)]: I[K] extends Signal<any>
-    ? (args: A & { inputValue: UnwrapSignal<I[K]> }) => UnwrapSignal<I[K]>
+    ? (args: A & { inputValue: I[K] }) => UnwrapSignal<I[K]>
     : never;
 } & {
   [K in Exclude<keyof O, keyof I>]: O[K] extends Signal<any>
@@ -99,7 +99,7 @@ export function applyBehavior<
       computation({
         self: parentState,
         items: itemStates,
-        inputValue: parentInputs[property]?.(),
+        inputValue: parentInputs[property],
       }),
     );
     // Make the state property writable if it's marked as such in the behavior.
@@ -152,7 +152,7 @@ export function applyBehavior<
                 self: itemState,
                 parent: parentState,
                 index: itemState[INDEX],
-                inputValue: itemInputs[property]?.(),
+                inputValue: itemInputs[property],
               }),
             );
             // Make the state property writable if it's marked as such in the behavior.
@@ -249,7 +249,7 @@ function composeComputationFunctions(
   let fn = fns.shift()!;
   let fn2: typeof fn | undefined;
   while ((fn2 = fns.shift())) {
-    fn = (args) => fn2!({ ...args, inputValue: fn(args) });
+    fn = (args) => fn2!({ ...args, inputValue: () => fn(args) });
   }
   return fn;
 }

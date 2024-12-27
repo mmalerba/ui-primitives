@@ -9,8 +9,6 @@ import { ListboxDirective, ListboxOptionDirective } from '../../ng-a11y/listbox'
   imports: [ListboxDirective, ListboxOptionDirective],
 })
 export class ListboxDemo {
-  activeIndex = signal(0);
-
   items = signal([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
   toggleExtra() {

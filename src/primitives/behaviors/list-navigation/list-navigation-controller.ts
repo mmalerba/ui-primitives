@@ -1,22 +1,41 @@
-import { Signal } from '@angular/core';
+import { computed, Signal } from '@angular/core';
+import { KeyboardEventManager } from '../../base/keyboard-event-manager';
 import { ListNavigationItemState, ListNavigationState } from './list-navigation-behavior';
 
 export class ListNavigationController {
   constructor(
-    private readonly parent: ListNavigationState,
+    private readonly list: ListNavigationState,
     private readonly items: Signal<readonly ListNavigationItemState[]>,
   ) {}
+
+  readonly keydownManager = computed(() => {
+    const previousKey = this.list.orientation() === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
+    const nextKey = this.list.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
+    return new KeyboardEventManager()
+      .on(previousKey, () => {
+        this.navigatePrevious();
+      })
+      .on(nextKey, () => {
+        this.navigateNext();
+      })
+      .on('Home', () => {
+        this.navigateFirst();
+      })
+      .on('End', () => {
+        this.navigateLast();
+      });
+  });
 
   navigateTo(index: number): void {
     this.navigate(index, () => index);
   }
 
   navigatePrevious() {
-    this.navigate(this.parent.activeIndex(), this.getPreviousIndex);
+    this.navigate(this.list.activeIndex(), this.getPreviousIndex);
   }
 
   navigateNext() {
-    this.navigate(this.parent.activeIndex(), this.getNextIndex);
+    this.navigate(this.list.activeIndex(), this.getNextIndex);
   }
 
   navigateFirst() {
@@ -29,11 +48,11 @@ export class ListNavigationController {
 
   private getPreviousIndex = (index: number) => {
     index = index === -1 ? this.items().length : index;
-    return this.parent.wrapNavigation() && index === 0 ? this.items().length - 1 : index - 1;
+    return this.list.wrapNavigation() && index === 0 ? this.items().length - 1 : index - 1;
   };
 
   private getNextIndex = (index: number) => {
-    return this.parent.wrapNavigation() && index === this.items().length - 1 ? 0 : index + 1;
+    return this.list.wrapNavigation() && index === this.items().length - 1 ? 0 : index + 1;
   };
 
   private navigate(initial: number, navigateFn: (i: number) => number): void {
@@ -46,7 +65,7 @@ export class ListNavigationController {
       }
       // If we don't care about disabled state, or we land on a non-disabled item, stop and navigate
       // to it.
-      if (!this.parent.navigationSkipsDisabled() || !this.items()[index].disabled()) {
+      if (!this.list.navigationSkipsDisabled() || !this.items()[index].disabled()) {
         break;
       }
 
@@ -58,6 +77,6 @@ export class ListNavigationController {
       }
     }
 
-    this.parent.activeElement.set(this.items()[index].element);
+    this.list.activatedElement.set(this.items()[index].element);
   }
 }

@@ -15,25 +15,29 @@ import {
   FocusState,
 } from '../primitives/behaviors/focus/focus-behavior';
 import { listNavigationBehavior } from '../primitives/behaviors/list-navigation/list-navigation-behavior';
+import { ListNavigationController } from '../primitives/behaviors/list-navigation/list-navigation-controller';
 
 @Directive({
   selector: '[listbox]',
   standalone: true,
   host: {
     '[attr.tabindex]': 'state.tabindex()',
+    '(keydown)': 'controller.keydownManager().handle($event)',
   },
 })
 export class ListboxDirective {
-  activeIndex = input.required<number>();
-  wrapNavigation = computed(() => false);
-  navigationSkipsDisabled = computed(() => false);
-  activeElement = computed(() => this.items().at(this.activeIndex())?.element ?? null);
+  readonly activeIndex = input(-1);
+  readonly wrapNavigation = computed(() => false);
+  readonly navigationSkipsDisabled = computed(() => false);
+  readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
+  readonly orientation = computed<'horizontal' | 'vertical'>(() => 'vertical');
 
-  items = contentChildren(ListboxOptionDirective);
+  readonly items = contentChildren(ListboxOptionDirective);
 
-  state: FocusState;
-  itemStates: Signal<readonly FocusItemState[]>;
-  itemStatesMap: Signal<Map<FocusBehaviorItemInputs, FocusItemState>>;
+  readonly state: FocusState;
+  readonly itemStates: Signal<readonly FocusItemState[]>;
+  readonly itemStatesMap: Signal<Map<FocusBehaviorItemInputs, FocusItemState>>;
+  readonly controller: ListNavigationController;
 
   constructor() {
     const { parentState, itemStatesMap, itemStates } = applyBehavior(
@@ -44,6 +48,7 @@ export class ListboxDirective {
     this.state = parentState;
     this.itemStatesMap = itemStatesMap;
     this.itemStates = itemStates;
+    this.controller = new ListNavigationController(parentState, itemStates);
   }
 }
 
@@ -56,9 +61,9 @@ export class ListboxDirective {
   },
 })
 export class ListboxOptionDirective {
-  element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  parent = inject(ListboxDirective);
-  disabled = input(false);
+  readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  readonly parent = inject(ListboxDirective);
+  readonly disabled = input(false);
 
-  state = computed(() => this.parent.itemStatesMap().get(this));
+  readonly state = computed(() => this.parent.itemStatesMap().get(this));
 }

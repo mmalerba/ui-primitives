@@ -1,9 +1,6 @@
-<div listbox [activeIndex]="activeIndex()">
+<div listbox>
   @for (item of items(); track item) {
-  <div listboxOption>{{item}}</div>
+    <div listboxOption>{{ item }}</div>
   }
 </div>
-<button (click)="activeIndex.set((activeIndex() + 1) % items().length)">
-  active: {{activeIndex()}}
-</button>
 <button (click)="toggleExtra()">toggle extra item</button>

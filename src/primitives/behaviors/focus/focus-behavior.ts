@@ -26,9 +26,9 @@ export const focusBehavior: Behavior<
   FocusBehaviorItemOutputs
 > = {
   computations: {
-    tabindex: (): 0 | -1 => -1,
+    tabindex: () => -1,
   },
   itemComputations: {
-    tabindex: ({ parent, index }): 0 | -1 => (parent.activeIndex() === index() ? 0 : -1),
+    tabindex: ({ parent, index }) => (parent.activeIndex() === index() ? 0 : -1),
   },
 };

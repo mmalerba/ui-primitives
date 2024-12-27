@@ -4,7 +4,8 @@ import { Behavior, State } from '../../base/behavior';
 export interface ListNavigationBehaviorInputs {
   readonly wrapNavigation: Signal<boolean>;
   readonly navigationSkipsDisabled: Signal<boolean>;
-  readonly activeElement: Signal<HTMLElement | null>;
+  readonly activatedElement: Signal<HTMLElement | null>;
+  readonly orientation: Signal<'horizontal' | 'vertical'>;
 }
 
 export interface ListNavigationBehaviorItemInputs {
@@ -13,7 +14,7 @@ export interface ListNavigationBehaviorItemInputs {
 }
 
 export interface ListNavigationBehaviorOutputs {
-  readonly activeElement: WritableSignal<Element | null>;
+  readonly activatedElement: WritableSignal<Element | null>;
   readonly activeIndex: Signal<number>;
 }
 
@@ -38,16 +39,18 @@ export const listNavigationBehavior: Behavior<
   ListNavigationBehaviorItemOutputs
 > = {
   computations: {
-    activeElement: ({ inputValue }) => inputValue,
-    activeIndex: ({ self, items }) =>
-      items().findIndex((item) => item.element === self.activeElement()),
+    activatedElement: ({ inputValue }) => inputValue(),
+    activeIndex: ({ self, items }) => {
+      const idx = items().findIndex((item) => item.element === self.activatedElement());
+      return idx === -1 && items().length ? 0 : idx;
+    },
   },
   itemComputations: {
     active: ({ parent, index }) => parent.activeIndex() === index(),
   },
   makeWritable: {
     parent: {
-      activeElement: true,
+      activatedElement: true,
     },
   },
 };
