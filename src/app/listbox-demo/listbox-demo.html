@@ -1,6 +1,6 @@
-<div rovingTabindex [activeIndex]="activeIndex()">
+<div listbox [activeIndex]="activeIndex()">
   @for (item of items(); track item) {
-  <div rovingTabindexItem>{{item}}</div>
+  <div listboxOption>{{item}}</div>
   }
 </div>
 <button (click)="activeIndex.set((activeIndex() + 1) % items().length)">

@@ -4,6 +4,7 @@ import { Behavior, State } from '../../base/behavior';
 export interface ListNavigationBehaviorInputs {
   readonly wrapNavigation: Signal<boolean>;
   readonly navigationSkipsDisabled: Signal<boolean>;
+  readonly activeElement: Signal<HTMLElement | null>;
 }
 
 export interface ListNavigationBehaviorItemInputs {
@@ -37,7 +38,7 @@ export const listNavigationBehavior: Behavior<
   ListNavigationBehaviorItemOutputs
 > = {
   computations: {
-    activeElement: () => null,
+    activeElement: ({ inputValue }) => inputValue,
     activeIndex: ({ self, items }) =>
       items().findIndex((item) => item.element === self.activeElement()),
   },

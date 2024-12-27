@@ -1,17 +1,12 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import {
-  RovingTabindexDirective,
-  RovingTabindexItemDirective,
-} from '../../ng-a11y/roving-tabindex';
-
-let nextItem = 0;
+import { ListboxDirective, ListboxOptionDirective } from '../../ng-a11y/listbox';
 
 @Component({
   selector: 'listbox-demo',
   templateUrl: 'listbox-demo.html',
   styleUrl: 'listbox-demo.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RovingTabindexDirective, RovingTabindexItemDirective],
+  imports: [ListboxDirective, ListboxOptionDirective],
 })
 export class ListboxDemo {
   activeIndex = signal(0);
