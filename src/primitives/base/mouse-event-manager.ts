@@ -1,4 +1,10 @@
-import { EventHandlerOptions, getModifiers } from './event-modifiers';
+import {
+  EventHandlerConfig,
+  EventHandlerOptions,
+  EventManager,
+  hasModifiers,
+  ModifierKey,
+} from './event-manager';
 
 export enum MouseButton {
   Main = 0,
@@ -6,38 +12,27 @@ export enum MouseButton {
   Secondary = 2,
 }
 
-export interface MouseEventHandlerConfig extends EventHandlerOptions {
+export interface MouseEventHandlerConfig extends EventHandlerConfig<MouseEvent> {
   button: number;
-  modifiers: number;
-  handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean);
+  modifiers: number | number[];
 }
 
-export class MouseEventManager {
+export class MouseEventManager extends EventManager<MouseEvent> {
   private handledButtons: MouseEventHandlerConfig[] = [];
 
-  private defaultHandlerOptions: EventHandlerOptions;
-
-  constructor(defaultHandlerOptions?: Partial<EventHandlerOptions>) {
-    this.defaultHandlerOptions = {
-      preventDefault: true,
-      stopPropagation: true,
-      ...defaultHandlerOptions,
-    };
-  }
-
   on(
-    modifiers: number,
+    modifiers: number | number[],
     button: MouseButton,
     handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
     options?: EventHandlerOptions,
-  ): MouseEventManager;
+  ): this;
   on(
     button: MouseButton,
     handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
     options?: EventHandlerOptions,
-  ): MouseEventManager;
+  ): this;
   on(...args: any[]) {
-    let modifiers = 0;
+    let modifiers = ModifierKey.None;
     let button: MouseButton;
     let handler: VoidFunction;
     const first = args.shift();
@@ -60,23 +55,12 @@ export class MouseEventManager {
     return this;
   }
 
-  handle(event: MouseEvent): boolean {
-    let eventHandled = false;
-    for (const { button, modifiers, handler, stopPropagation, preventDefault } of this
-      .handledButtons) {
-      if (button === (event.button ?? 0) && modifiers === getModifiers(event)) {
-        const handled = handler(event) !== false;
-        if (handled) {
-          eventHandled = true;
-          if (stopPropagation) {
-            event.stopPropagation();
-          }
-          if (preventDefault) {
-            event.preventDefault();
-          }
-        }
+  override getHandler(event: MouseEvent) {
+    for (const config of this.handledButtons) {
+      if (config.button === (event.button ?? 0) && hasModifiers(event, config.modifiers)) {
+        return config;
       }
     }
-    return eventHandled;
+    return null;
   }
 }

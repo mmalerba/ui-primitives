@@ -1,40 +1,35 @@
-import { EventHandlerOptions, getModifiers } from './event-modifiers';
+import {
+  EventHandlerConfig,
+  EventHandlerOptions,
+  EventManager,
+  hasModifiers,
+  ModifierKey,
+} from './event-manager';
 
-export interface KeyboardEventHandlerConfig extends EventHandlerOptions {
+export interface KeyboardEventHandlerConfig extends EventHandlerConfig<KeyboardEvent> {
   key: string | ((key: string) => boolean);
-  modifiers: number;
-  handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean);
+  modifiers: number | number[];
 }
 
-export class KeyboardEventManager {
+export class KeyboardEventManager extends EventManager<KeyboardEvent> {
   private handledKeys: KeyboardEventHandlerConfig[] = [];
 
-  private defaultHandlerOptions: EventHandlerOptions;
-
-  constructor(defaultHandlerOptions?: Partial<EventHandlerOptions>) {
-    this.defaultHandlerOptions = {
-      preventDefault: true,
-      stopPropagation: true,
-      ...defaultHandlerOptions,
-    };
-  }
-
   on(
-    modifiers: number,
+    modifiers: number | number[],
     key: string | ((key: string) => boolean),
     handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
     options?: Partial<EventHandlerOptions>,
-  ): KeyboardEventManager;
+  ): this;
   on(
     key: string | ((key: string) => boolean),
     handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
     options?: Partial<EventHandlerOptions>,
-  ): KeyboardEventManager;
+  ): this;
   on(...args: any[]) {
-    let modifiers = 0;
+    let modifiers: number | number[] = ModifierKey.None;
     let key: string;
     const first = args.shift();
-    if (typeof first === 'number') {
+    if (typeof first === 'number' || Array.isArray(first)) {
       modifiers = first;
       key = args.shift();
     } else {
@@ -51,24 +46,16 @@ export class KeyboardEventManager {
     return this;
   }
 
-  handle(event: KeyboardEvent): boolean {
-    let eventHandled = false;
-    for (const { key, modifiers, handler, stopPropagation, preventDefault } of this.handledKeys) {
+  override getHandler(event: KeyboardEvent) {
+    for (const config of this.handledKeys) {
       const keyMatches =
-        typeof key === 'string' ? key.toUpperCase() === event.key.toUpperCase() : key(event.key);
-      if (keyMatches && modifiers === getModifiers(event)) {
-        const handled = handler(event) !== false;
-        if (handled) {
-          eventHandled = true;
-          if (stopPropagation) {
-            event.stopPropagation();
-          }
-          if (preventDefault) {
-            event.preventDefault();
-          }
-        }
+        typeof config.key === 'string'
+          ? config.key.toUpperCase() === event.key.toUpperCase()
+          : config.key(event.key);
+      if (keyMatches && hasModifiers(event, config.modifiers)) {
+        return config;
       }
     }
-    return eventHandled;
+    return null;
   }
 }
