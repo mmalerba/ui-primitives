@@ -2,6 +2,7 @@ import {
   computed,
   contentChildren,
   Directive,
+  effect,
   ElementRef,
   inject,
   input,
@@ -26,6 +27,7 @@ import { ListNavigationController } from '../primitives/behaviors/list-navigatio
   },
 })
 export class ListboxDirective {
+  readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   readonly activeIndex = input(-1);
   readonly wrapNavigation = computed(() => false);
   readonly navigationSkipsDisabled = computed(() => false);
@@ -40,7 +42,7 @@ export class ListboxDirective {
   readonly controller: ListNavigationController;
 
   constructor() {
-    const { parentState, itemStatesMap, itemStates } = applyBehavior(
+    const { parentState, itemStatesMap, itemStates, syncFns } = applyBehavior(
       composeBehavior(listNavigationBehavior, focusBehavior),
       this,
       this.items,
@@ -49,6 +51,10 @@ export class ListboxDirective {
     this.itemStatesMap = itemStatesMap;
     this.itemStates = itemStates;
     this.controller = new ListNavigationController(parentState, itemStates);
+
+    for (const fn of syncFns) {
+      effect(fn);
+    }
   }
 }
 

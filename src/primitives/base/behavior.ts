@@ -55,16 +55,20 @@ export type Behavior<
           II,
           IO
         >;
-      });
+      }) & {
+    sync?: ((arg: { parent: State<PI, PO>; items: Signal<readonly State<II, IO>[]> }) => void)[];
+  };
 
 export type ComposedBehavior<
   PI1 extends State,
   II1 extends State,
   PO1 extends State,
   IO1 extends State,
+  PI2 extends State,
+  II2 extends State,
   PO2 extends State,
   IO2 extends State,
-> = Behavior<PI1, II1, State<PO1, PO2>, State<IO1, IO2>>;
+> = Behavior<State<PI1, PI2>, State<II1, II2>, State<PO1, PO2>, State<IO1, IO2>>;
 
 const WRITABLE = Symbol('writable');
 
@@ -159,7 +163,11 @@ export function applyBehavior<
   // Create a list of the item states
   const itemStates = computed(() => itemsInputs().map((v) => itemStatesMap().get(v)!));
 
-  return { parentState, itemStatesMap, itemStates } as const;
+  // Create a list of all the sync functions.
+  const syncFns =
+    behavior.sync?.map((fn) => () => fn({ parent: parentState, items: itemStates })) ?? [];
+
+  return { parentState, itemStatesMap, itemStates, syncFns } as const;
 }
 
 export function composeBehavior<
@@ -167,14 +175,14 @@ export function composeBehavior<
   II1 extends State,
   PO1 extends State,
   IO1 extends State,
-  PI2 extends Partial<State<PI1, PO1>>,
-  II2 extends Partial<State<PI1, PO1>>,
+  PI2 extends State,
+  II2 extends State,
   PO2 extends State,
   IO2 extends State,
 >(
   b1: Behavior<PI1, II1, PO1, IO1>,
   b2: Behavior<PI2, II2, PO2, IO2>,
-): ComposedBehavior<PI1, II1, PO1, IO1, PO2, IO2> {
+): ComposedBehavior<PI1, II1, PO1, IO1, PI2, II2, PO2, IO2> {
   const computations = composeComputations(
     b1.computations as StateComputations<Record<string, unknown>, State, State>,
     b2.computations as StateComputations<Record<string, unknown>, State, State>,
@@ -183,10 +191,12 @@ export function composeBehavior<
     b1.itemComputations as StateComputations<Record<string, unknown>, State, State>,
     b2.itemComputations as StateComputations<Record<string, unknown>, State, State>,
   );
+  const sync = [...(b1.sync ?? []), ...(b2.sync ?? [])];
   return {
     computations,
     itemComputations,
-  } as ComposedBehavior<PI1, II1, PO1, IO1, PO2, IO2>;
+    sync,
+  } as unknown as ComposedBehavior<PI1, II1, PO1, IO1, PI2, II2, PO2, IO2>;
 }
 
 export function writable<T>(fn: T): T & { [WRITABLE]: true } {
