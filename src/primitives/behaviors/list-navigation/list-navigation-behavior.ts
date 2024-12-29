@@ -1,5 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { Behavior, State } from '../../base/behavior';
+import { Behavior, State, writable } from '../../base/behavior';
 
 export interface ListNavigationBehaviorInputs {
   readonly wrapNavigation: Signal<boolean>;
@@ -39,7 +39,7 @@ export const listNavigationBehavior: Behavior<
   ListNavigationBehaviorItemOutputs
 > = {
   computations: {
-    activatedElement: ({ inputValue }) => inputValue(),
+    activatedElement: writable(({ inputValue }) => inputValue()),
     activeIndex: ({ self, items }) => {
       const idx = items().findIndex((item) => item.element === self.activatedElement());
       return idx === -1 && items().length ? 0 : idx;
@@ -47,10 +47,5 @@ export const listNavigationBehavior: Behavior<
   },
   itemComputations: {
     active: ({ parent, index }) => parent.activeIndex() === index(),
-  },
-  makeWritable: {
-    parent: {
-      activatedElement: true,
-    },
   },
 };

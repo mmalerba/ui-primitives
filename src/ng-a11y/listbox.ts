@@ -23,7 +23,6 @@ import { ListNavigationController } from '../primitives/behaviors/list-navigatio
   host: {
     '[attr.tabindex]': 'state.tabindex()',
     '(keydown)': 'controller.keydownManager().handle($event)',
-    '(focusin)': 'controller.focusinManager.handle($event)',
   },
 })
 export class ListboxDirective {

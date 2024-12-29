@@ -13,34 +13,25 @@ export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
 
 export type StateComputations<A extends Record<string, any>, I extends State, O extends State> = {
   [K in keyof (I | O)]: I[K] extends Signal<any>
-    ? (args: A & { inputValue: I[K] }) => UnwrapSignal<I[K]>
+    ? ((args: A & { inputValue: I[K] }) => UnwrapSignal<O[K]>) &
+        (O[K] extends WritableSignal<any>
+          ? {
+              [WRITABLE]: true;
+            }
+          : {})
     : never;
 } & {
   [K in Exclude<keyof O, keyof I>]: O[K] extends Signal<any>
-    ? (args: A) => UnwrapSignal<O[K]>
+    ? ((args: A) => UnwrapSignal<O[K]>) &
+        (O[K] extends WritableSignal<any>
+          ? {
+              [WRITABLE]: true;
+            }
+          : {})
     : never;
 } & {
   [K in keyof O]: unknown;
 };
-
-export type PickWritable<T extends State> = {
-  [K in keyof T as T[K] extends WritableSignal<any> ? K : never]: T[K];
-};
-
-export type MakeWritableBlock<PO extends State, IO extends State> = ({} extends PickWritable<PO>
-  ? { parent?: undefined }
-  : {
-      parent: { [K in keyof PickWritable<PO>]: true } & {
-        [K in keyof Omit<PO, keyof PickWritable<PO>>]?: undefined;
-      };
-    }) &
-  ({} extends PickWritable<IO>
-    ? { item?: undefined }
-    : {
-        item: { [K in keyof PickWritable<IO>]: true } & {
-          [K in keyof Omit<IO, keyof PickWritable<IO>>]?: undefined;
-        };
-      });
 
 export type Behavior<
   PI extends State,
@@ -64,10 +55,7 @@ export type Behavior<
           II,
           IO
         >;
-      }) &
-  ({} extends PickWritable<PO & IO>
-    ? { makeWritable?: undefined }
-    : { makeWritable: MakeWritableBlock<PO, IO> });
+      });
 
 export type ComposedBehavior<
   PI1 extends State,
@@ -77,6 +65,8 @@ export type ComposedBehavior<
   PO2 extends State,
   IO2 extends State,
 > = Behavior<PI1, II1, State<PO1, PO2>, State<IO1, IO2>>;
+
+const WRITABLE = Symbol('writable');
 
 // Special property on item state that holds the index of the item in the list. We need this since
 // the item can move around in the list and we want the item's state to be able to update based on
@@ -103,7 +93,7 @@ export function applyBehavior<
       }),
     );
     // Make the state property writable if it's marked as such in the behavior.
-    if ((behavior.makeWritable?.parent as Record<string, unknown>)?.[property]) {
+    if ((computation as any)[WRITABLE]) {
       (parentState as Record<string, unknown>)[property] = linkedSignal(parentState[property]);
     }
   }
@@ -156,7 +146,7 @@ export function applyBehavior<
               }),
             );
             // Make the state property writable if it's marked as such in the behavior.
-            if ((behavior.makeWritable?.item as Record<string, unknown>)?.[property]) {
+            if ((computation as any)[WRITABLE]) {
               (itemState as Record<string, unknown>)[property] = linkedSignal(itemState[property]);
             }
           }
@@ -193,26 +183,15 @@ export function composeBehavior<
     b1.itemComputations as StateComputations<Record<string, unknown>, State, State>,
     b2.itemComputations as StateComputations<Record<string, unknown>, State, State>,
   );
-  const makeWritableParent = {
-    ...(b1.makeWritable?.parent ?? {}),
-    ...(b2.makeWritable?.parent ?? {}),
-  };
-  const makeWritableItem = {
-    ...(b1.makeWritable?.item ?? {}),
-    ...(b2.makeWritable?.item ?? {}),
-  };
-  const makeWritable =
-    Object.keys(makeWritableParent).length || Object.keys(makeWritableItem).length
-      ? {
-          parent: Object.keys(makeWritableParent).length ? makeWritableParent : undefined,
-          item: Object.keys(makeWritableItem).length ? makeWritableItem : undefined,
-        }
-      : undefined;
   return {
     computations,
     itemComputations,
-    makeWritable,
-  } as unknown as ComposedBehavior<PI1, II1, PO1, IO1, PO2, IO2>;
+  } as ComposedBehavior<PI1, II1, PO1, IO1, PO2, IO2>;
+}
+
+export function writable<T>(fn: T): T & { [WRITABLE]: true } {
+  (fn as any)[WRITABLE] = true;
+  return fn as any;
 }
 
 function composeComputations(
@@ -250,6 +229,9 @@ function composeComputationFunctions(
   let fn2: typeof fn | undefined;
   while ((fn2 = fns.shift())) {
     fn = (args) => fn2!({ ...args, inputValue: () => fn(args) });
+  }
+  if (fns.some((f) => (f as any)[WRITABLE])) {
+    (fn as any)[WRITABLE] = true;
   }
   return fn;
 }
