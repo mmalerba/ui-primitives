@@ -63,9 +63,8 @@ export class ListNavigationController {
       if (index < 0 || index >= this.items().length) {
         return;
       }
-      // If we don't care about disabled state, or we land on a non-disabled item, stop and navigate
-      // to it.
-      if (!this.list.navigationSkipsDisabled() || !this.items()[index].disabled()) {
+      // If we land on a non-disabled item, stop and navigate to it.
+      if (!this.items()[index].disabled()) {
         break;
       }
 

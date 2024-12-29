@@ -15,6 +15,7 @@ import {
   FocusItemState,
   FocusState,
 } from '../primitives/behaviors/focus/focus-behavior';
+import { FocusController } from '../primitives/behaviors/focus/focus-controller';
 import { listNavigationBehavior } from '../primitives/behaviors/list-navigation/list-navigation-behavior';
 import { ListNavigationController } from '../primitives/behaviors/list-navigation/list-navigation-controller';
 
@@ -23,8 +24,10 @@ import { ListNavigationController } from '../primitives/behaviors/list-navigatio
   standalone: true,
   host: {
     '[attr.tabindex]': 'state.tabindex()',
-    '(keydown)': 'controller.keydownManager().handle($event)',
+    '(keydown)': 'navigationController.keydownManager().handle($event)',
+    '(focusout)': 'focusController.focusoutManager.handle($event)',
   },
+  exportAs: 'listbox',
 })
 export class ListboxDirective {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -39,7 +42,8 @@ export class ListboxDirective {
   readonly state: FocusState;
   readonly itemStates: Signal<readonly FocusItemState[]>;
   readonly itemStatesMap: Signal<Map<FocusBehaviorItemInputs, FocusItemState>>;
-  readonly controller: ListNavigationController;
+  readonly navigationController: ListNavigationController;
+  readonly focusController: FocusController;
 
   constructor() {
     const { parentState, itemStatesMap, itemStates, syncFns } = applyBehavior(
@@ -50,7 +54,8 @@ export class ListboxDirective {
     this.state = parentState;
     this.itemStatesMap = itemStatesMap;
     this.itemStates = itemStates;
-    this.controller = new ListNavigationController(parentState, itemStates);
+    this.navigationController = new ListNavigationController(parentState, itemStates);
+    this.focusController = new FocusController(parentState, itemStates);
 
     for (const fn of syncFns) {
       effect(fn);
@@ -65,6 +70,7 @@ export class ListboxDirective {
     '[attr.tabindex]': 'state().tabindex()',
     '[class.active]': 'state().active()',
   },
+  exportAs: 'listboxOption',
 })
 export class ListboxOptionDirective {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

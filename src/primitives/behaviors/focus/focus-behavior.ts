@@ -8,6 +8,7 @@ export interface FocusBehaviorInputs {
 
 export interface FocusBehaviorItemInputs {
   readonly element: HTMLElement;
+  readonly disabled: Signal<boolean>;
 }
 
 export interface FocusBehaviorOutputs {
@@ -32,7 +33,8 @@ export const focusBehavior: Behavior<
     tabindex: () => -1,
   },
   itemComputations: {
-    tabindex: ({ parent, index }) => (parent.activeIndex() === index() ? 0 : -1),
+    tabindex: ({ self, parent, index }) =>
+      !self.disabled() && parent.activeIndex() === index() ? 0 : -1,
   },
   sync: [
     ({ parent, items }) => {

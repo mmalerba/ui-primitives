@@ -3,7 +3,6 @@ import { Behavior, State, writable } from '../../base/behavior';
 
 export interface ListNavigationBehaviorInputs {
   readonly wrapNavigation: Signal<boolean>;
-  readonly navigationSkipsDisabled: Signal<boolean>;
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<'horizontal' | 'vertical'>;
 }

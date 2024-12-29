@@ -33,13 +33,10 @@ export abstract class EventManager<T extends Event> {
     };
   }
 
-  handle(event: T): boolean {
+  handle(event: T): true | undefined {
     const config = this.getHandler(event);
-    if (!config) {
-      return false;
-    }
-    if (config.handler(event) === false) {
-      return false;
+    if (!config || config.handler(event) === false) {
+      return undefined;
     }
     if (config.stopPropagation) {
       event.stopPropagation();

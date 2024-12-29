@@ -14,20 +14,12 @@ export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
 export type StateComputations<A extends Record<string, any>, I extends State, O extends State> = {
   [K in keyof (I | O)]: I[K] extends Signal<any>
     ? ((args: A & { inputValue: I[K] }) => UnwrapSignal<O[K]>) &
-        (O[K] extends WritableSignal<any>
-          ? {
-              [WRITABLE]: true;
-            }
-          : {})
+        (O[K] extends WritableSignal<any> ? { [WRITABLE]: true } : {})
     : never;
 } & {
   [K in Exclude<keyof O, keyof I>]: O[K] extends Signal<any>
     ? ((args: A) => UnwrapSignal<O[K]>) &
-        (O[K] extends WritableSignal<any>
-          ? {
-              [WRITABLE]: true;
-            }
-          : {})
+        (O[K] extends WritableSignal<any> ? { [WRITABLE]: true } : {})
     : never;
 } & {
   [K in keyof O]: unknown;
@@ -42,7 +34,11 @@ export type Behavior<
   ? { computations?: undefined }
   : {
       computations: StateComputations<
-        { self: State<PI, PO>; items: Signal<readonly State<II, IO>[]> },
+        {
+          self: State<PI, PO>;
+          items: Signal<readonly State<II, IO>[]>;
+          inputs: { self: PI; items: Signal<readonly II[]> };
+        },
         PI,
         PO
       >;
@@ -51,7 +47,12 @@ export type Behavior<
     ? { itemComputations?: undefined }
     : {
         itemComputations: StateComputations<
-          { self: State<II, IO>; parent: State<PI, PO>; index: Signal<number> },
+          {
+            self: State<II, IO>;
+            parent: State<PI, PO>;
+            index: Signal<number>;
+            inputs: { self: II; parent: PI };
+          },
           II,
           IO
         >;
@@ -93,6 +94,7 @@ export function applyBehavior<
       computation({
         self: parentState,
         items: itemStates,
+        inputs: { self: parentInputs, items: itemsInputs },
         inputValue: parentInputs[property],
       }),
     );
@@ -146,6 +148,7 @@ export function applyBehavior<
                 self: itemState,
                 parent: parentState,
                 index: itemState[INDEX],
+                inputs: { self: itemInputs, parent: parentInputs },
                 inputValue: itemInputs[property],
               }),
             );
@@ -170,6 +173,7 @@ export function applyBehavior<
   return { parentState, itemStatesMap, itemStates, syncFns } as const;
 }
 
+// TODO: rework this to be compatible with accessing full inputs
 export function composeBehavior<
   PI1 extends State,
   II1 extends State,

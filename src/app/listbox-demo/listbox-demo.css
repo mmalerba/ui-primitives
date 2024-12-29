@@ -1,0 +1,36 @@
+[listbox] {
+  padding: 0;
+  margin: 4px;
+}
+
+[listboxOption] {
+  display: grid;
+  grid-template-columns: 30px auto;
+  padding: 0 4px;
+}
+
+.command-target {
+  box-shadow: -6px 0 0 0px rgba(250, 100, 0);
+}
+
+.active {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+ul:focus-within .active {
+  background: rgba(0, 0, 255, 0.15);
+}
+
+[disabled="true"] {
+  opacity: 0.5;
+}
+
+[aria-selected="true"],
+ul:focus-within [aria-selected="true"] {
+  color: blue;
+  font-weight: bold;
+
+  &::marker {
+    color: blue;
+  }
+}

@@ -1,0 +1,31 @@
+:host {
+  display: block;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 4px;
+}
+
+:host.active {
+  background: yellow;
+}
+
+.commands {
+  font-size: 14px;
+  display: grid;
+  grid-template-columns: fit-content(50%) 1fr;
+  gap: 2px 2em;
+}
+
+.header {
+  font-weight: bold;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.input {
+  margin-top: 4px;
+  font-weight: bold;
+  color: rgba(250, 100, 0);
+}

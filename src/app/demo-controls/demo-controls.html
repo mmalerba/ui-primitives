@@ -1,0 +1,9 @@
+<div class="commands">
+  <div class="header">Command</div>
+  <div class="header">Description</div>
+  @for (cmd of commands(); track $index) {
+    <div>{{ cmd.name }}</div>
+    <div>{{ cmd.description }}</div>
+  }
+</div>
+<div class="input" [class.hidden]="!active()">&gt; {{ command() }}</div>

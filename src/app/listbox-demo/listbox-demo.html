@@ -1,7 +1,13 @@
-<div listbox [activeIndex]="activeIndex()">
+<demo-controls [commands]="commands"></demo-controls>
+<ul listbox [class.command-target]="commandTarget() === 'l'">
   @for (item of items(); track item) {
-    <div listboxOption>{{ item }}</div>
+    <li
+      listboxOption
+      [attr.disabled]="disabledItems().has(item)"
+      [disabled]="disabledItems().has(item)"
+      [class.command-target]="commandTarget() === $index"
+    >
+      <span class="index">{{ $index }}:</span> item #{{ item }}
+    </li>
   }
-</div>
-<button (click)="rnd()">rnd active</button>
-<button (click)="toggleExtra()">toggle extra item</button>
+</ul>
