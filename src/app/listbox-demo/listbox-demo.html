@@ -1,9 +1,8 @@
 <demo-controls [commands]="commands"></demo-controls>
-<ul listbox [class.command-target]="commandTarget() === 'l'">
+<ul listbox [disabled]="disabled()" [focusStrategy]="focusStrategy()" [class.command-target]="commandTarget() === 'l'">
   @for (item of items(); track item) {
     <li
       listboxOption
-      [attr.disabled]="disabledItems().has(item)"
       [disabled]="disabledItems().has(item)"
       [class.command-target]="commandTarget() === $index"
     >

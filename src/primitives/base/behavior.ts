@@ -69,7 +69,12 @@ export type ComposedBehavior<
   II2 extends State,
   PO2 extends State,
   IO2 extends State,
-> = Behavior<State<PI1, PI2>, State<II1, II2>, State<PO1, PO2>, State<IO1, IO2>>;
+> = Behavior<
+  PI1 & Omit<PI2, keyof PO1>,
+  II1 & Omit<II2, keyof IO1>,
+  State<PO1, PO2>,
+  State<IO1, IO2>
+>;
 
 const WRITABLE = Symbol('writable');
 

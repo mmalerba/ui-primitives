@@ -16,6 +16,7 @@ export class ListboxDemo {
 
   disabled = signal(false);
   disabledItems = signal(new Set<number>(), { equal: () => false });
+  focusStrategy = signal<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
 
   listbox = viewChild.required(ListboxDirective);
   controls = viewChild.required(DemoControls);
@@ -26,13 +27,13 @@ export class ListboxDemo {
 
   commands = [
     {
-      name: '[l, a, {idx}]',
+      name: '[l, a, <index>]',
       description: 'Prefix to target command at list, active item, or item at given index',
       match: () => false,
       run: () => {},
     },
     {
-      name: 'd',
+      name: '<target>d',
       description: 'Toggle disabled state of the target element',
       match: /^(l|a|\d+)d$/i,
       run: () => {
@@ -52,7 +53,7 @@ export class ListboxDemo {
       },
     },
     {
-      name: 'a',
+      name: '<target>a',
       description: 'Add an item before the target item',
       match: /^(l|a|\d+)a$/i,
       run: () => {
@@ -64,7 +65,7 @@ export class ListboxDemo {
       },
     },
     {
-      name: 'r',
+      name: '<target>r',
       description: 'Remove the target item',
       match: /^(l|a|\d+)r$/i,
       run: () => {
@@ -74,6 +75,17 @@ export class ListboxDemo {
         }
         this.items().splice(target, 1);
         this.items.update((items) => items);
+      },
+    },
+    {
+      name: 'f',
+      description: 'Toggle focus management strategy',
+      current: this.focusStrategy,
+      match: /^f$/,
+      run: () => {
+        this.focusStrategy.update((s) =>
+          s === 'activedescendant' ? 'rovingtabindex' : 'activedescendant',
+        );
       },
     },
   ];

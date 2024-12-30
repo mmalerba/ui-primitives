@@ -17,16 +17,20 @@
   background: rgba(0, 0, 0, 0.1);
 }
 
-ul:focus-within .active {
+[listbox]:focus-within .active {
   background: rgba(0, 0, 255, 0.15);
 }
 
-[disabled="true"] {
+[listbox][disabled] {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[listboxOption][disabled] {
   opacity: 0.5;
 }
 
 [aria-selected="true"],
-ul:focus-within [aria-selected="true"] {
+[listbox]:focus-within [aria-selected="true"] {
   color: blue;
   font-weight: bold;
 

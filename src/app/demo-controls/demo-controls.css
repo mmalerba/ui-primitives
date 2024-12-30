@@ -12,7 +12,7 @@
 .commands {
   font-size: 14px;
   display: grid;
-  grid-template-columns: fit-content(50%) 1fr;
+  grid-template-columns: fit-content(100%) fit-content(100%) 1fr;
   gap: 2px 2em;
 }
 

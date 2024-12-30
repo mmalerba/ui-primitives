@@ -1,8 +1,8 @@
 import { Signal } from '@angular/core';
 import { GenericEventManager } from '../../base/event-manager';
-import { FocusItemState, FocusState } from './focus-behavior';
+import { CompositeFocusItemState, CompositeFocusState } from './composite-focus-behavior';
 
-export class FocusController {
+export class CompositeFocusController {
   readonly focusoutManager = new GenericEventManager<FocusEvent>().on((e) => {
     // If the active element is blurred due to its imminent removal from the DOM,
     // focus the new active element.
@@ -16,7 +16,7 @@ export class FocusController {
   });
 
   constructor(
-    private readonly parent: FocusState,
-    private readonly items: Signal<readonly FocusItemState[]>,
+    private readonly parent: CompositeFocusState,
+    private readonly items: Signal<readonly CompositeFocusItemState[]>,
   ) {}
 }

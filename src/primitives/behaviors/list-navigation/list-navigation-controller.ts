@@ -1,6 +1,11 @@
 import { computed, Signal } from '@angular/core';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
-import { ListNavigationItemState, ListNavigationState } from './list-navigation-behavior';
+import {
+  getIndex,
+  getNextIndex,
+  ListNavigationItemState,
+  ListNavigationState,
+} from './list-navigation-behavior';
 
 export class ListNavigationController {
   constructor(
@@ -51,31 +56,12 @@ export class ListNavigationController {
     return this.list.wrapNavigation() && index === 0 ? this.items().length - 1 : index - 1;
   };
 
-  private getNextIndex = (index: number) => {
-    return this.list.wrapNavigation() && index === this.items().length - 1 ? 0 : index + 1;
-  };
+  private getNextIndex = (index: number) => getNextIndex(this.list, this.items, index);
 
   private navigate(initial: number, navigateFn: (i: number) => number): void {
-    const startIndex = navigateFn(initial);
-    let index = startIndex;
-    while (true) {
-      // Don't navigate if we go past the end of the list.
-      if (index < 0 || index >= this.items().length) {
-        return;
-      }
-      // If we land on a non-disabled item, stop and navigate to it.
-      if (!this.items()[index].disabled()) {
-        break;
-      }
-
-      index = navigateFn(index);
-
-      // Don't navigate if we loop back around to our starting position.
-      if (index === startIndex) {
-        return;
-      }
+    const index = getIndex(this.items, initial, navigateFn);
+    if (index !== -1) {
+      this.list.activatedElement.set(this.items()[index].element);
     }
-
-    this.list.activatedElement.set(this.items()[index].element);
   }
 }

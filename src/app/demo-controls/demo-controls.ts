@@ -1,10 +1,11 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, Signal, signal } from '@angular/core';
 import { ModifierKey } from '../../primitives/base/event-manager';
 import { KeyboardEventManager } from '../../primitives/base/keyboard-event-manager';
 
 interface Command {
   name: string;
   description: string;
+  current?: Signal<string>;
   match: RegExp | ((c: string) => boolean);
   run: (c: string) => void;
 }
