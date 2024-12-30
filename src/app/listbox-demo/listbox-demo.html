@@ -1,5 +1,10 @@
 <demo-controls [commands]="commands"></demo-controls>
-<ul listbox [disabled]="disabled()" [focusStrategy]="focusStrategy()" [class.command-target]="commandTarget() === 'l'">
+<ul
+  listbox
+  [disabled]="disabled()"
+  [focusStrategy]="focusStrategy()"
+  [class.command-target]="commandTarget() === 'l'"
+>
   @for (item of items(); track item) {
     <li
       listboxOption
@@ -9,4 +14,14 @@
       <span class="index">{{ $index }}:</span> item #{{ item }}
     </li>
   }
+</ul>
+<h3>TODO:</h3>
+<ul>
+  <li>multi selection</li>
+  <li>selection follows focus</li>
+  <li>selected / disabled interaction</li>
+  <li>typeahead</li>
+  <li>composed listbox primitive</li>
+  <li>orientation</li>
+  <li>click handlers</li>
 </ul>
