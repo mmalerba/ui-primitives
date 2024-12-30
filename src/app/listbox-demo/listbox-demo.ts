@@ -17,6 +17,7 @@ export class ListboxDemo {
   disabled = signal(false);
   disabledItems = signal(new Set<number>(), { equal: () => false });
   focusStrategy = signal<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
+  orientation = signal<'horizontal' | 'vertical'>('vertical');
 
   listbox = viewChild.required(ListboxDirective);
   controls = viewChild.required(DemoControls);
@@ -86,6 +87,15 @@ export class ListboxDemo {
         this.focusStrategy.update((s) =>
           s === 'activedescendant' ? 'rovingtabindex' : 'activedescendant',
         );
+      },
+    },
+    {
+      name: 'o',
+      description: 'Toggle the orientation of the listbox',
+      current: this.orientation,
+      match: /^o$/,
+      run: () => {
+        this.orientation.update((o) => (o === 'vertical' ? 'horizontal' : 'vertical'));
       },
     },
   ];

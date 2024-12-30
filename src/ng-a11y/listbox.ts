@@ -51,11 +51,11 @@ export class ListboxDirective {
   readonly activeIndex = input(-1);
   readonly disabled = input(false);
   readonly focusStrategy = input<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
+  readonly orientation = input<'horizontal' | 'vertical'>('vertical');
 
   readonly wrapNavigation = computed(() => false);
   readonly navigationSkipsDisabled = computed(() => false);
   readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
-  readonly orientation = computed<'horizontal' | 'vertical'>(() => 'vertical');
   readonly selectedValues = computed<number[]>(() => []);
   readonly selectionType = computed<'single' | 'multiple'>(() => 'single');
   readonly compareValues = computed<(a: number, b: number) => boolean>(() => (a, b) => a === b);

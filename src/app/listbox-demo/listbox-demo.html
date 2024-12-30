@@ -2,6 +2,7 @@
 <ul
   listbox
   [disabled]="disabled()"
+  [orientation]="orientation()"
   [focusStrategy]="focusStrategy()"
   [class.command-target]="commandTarget() === 'l'"
 >
@@ -22,6 +23,5 @@
   <li>selected / disabled interaction</li>
   <li>typeahead</li>
   <li>composed listbox primitive</li>
-  <li>orientation</li>
   <li>click handlers</li>
 </ul>
