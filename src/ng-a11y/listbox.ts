@@ -8,26 +8,23 @@ import {
   input,
   Signal,
 } from '@angular/core';
-import { applyBehavior, composeBehavior, State } from '../primitives/base/behavior';
+import { applyBehavior } from '../primitives/base/behavior';
 import {
-  compositeDisabledBehavior,
   CompositeDisabledItemState,
   CompositeDisabledState,
 } from '../primitives/behaviors/composite-disabled/composite-disabled-behavior';
 import {
-  compositeFocusBehavior,
   CompositeFocusItemState,
   CompositeFocusState,
 } from '../primitives/behaviors/composite-focus/composite-focus-behavior';
 import { CompositeFocusController } from '../primitives/behaviors/composite-focus/composite-focus-controller';
 import {
-  listNavigationBehavior,
   ListNavigationItemState,
   ListNavigationState,
 } from '../primitives/behaviors/list-navigation/list-navigation-behavior';
 import { ListNavigationController } from '../primitives/behaviors/list-navigation/list-navigation-controller';
+import { getListboxBehavior } from '../primitives/behaviors/listbox/listbox-behavior';
 import {
-  getSelectionBehavior,
   SelectionItemState,
   SelectionState,
 } from '../primitives/behaviors/selection/selection-behavior';
@@ -62,23 +59,23 @@ export class ListboxDirective {
 
   readonly items = contentChildren(ListboxOptionDirective);
 
-  readonly state: State<
-    State<State<CompositeDisabledState, CompositeFocusState>, ListNavigationState>,
-    SelectionState<number>
-  >;
+  readonly state: CompositeDisabledState &
+    CompositeFocusState &
+    ListNavigationState &
+    SelectionState<number>;
   readonly itemStates: Signal<
-    readonly State<
-      State<State<CompositeDisabledItemState, CompositeFocusItemState>, ListNavigationItemState>,
-      SelectionItemState<number>
-    >[]
+    readonly (CompositeDisabledItemState &
+      CompositeFocusItemState &
+      ListNavigationItemState &
+      SelectionItemState<number>)[]
   >;
   readonly itemStatesMap: Signal<
     Map<
       unknown,
-      State<
-        State<State<CompositeDisabledItemState, CompositeFocusItemState>, ListNavigationItemState>,
+      CompositeDisabledItemState &
+        CompositeFocusItemState &
+        ListNavigationItemState &
         SelectionItemState<number>
-      >
     >
   >;
   readonly navigationController: ListNavigationController;
@@ -87,13 +84,7 @@ export class ListboxDirective {
 
   constructor() {
     const { parentState, itemStatesMap, itemStates, syncFns } = applyBehavior(
-      composeBehavior(
-        composeBehavior(
-          compositeDisabledBehavior,
-          composeBehavior(listNavigationBehavior, compositeFocusBehavior),
-        ),
-        getSelectionBehavior<number>(),
-      ),
+      getListboxBehavior<number>(),
       this,
       this.items,
     );

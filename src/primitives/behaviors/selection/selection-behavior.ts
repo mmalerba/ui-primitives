@@ -1,5 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { Behavior, State, writable } from '../../base/behavior';
+import { Behavior, ItemStateType, ParentStateType, writable } from '../../base/behavior';
 
 export interface SelectionBehaviorInputs<T> {
   readonly activeIndex: Signal<number>;
@@ -23,19 +23,18 @@ export interface SelectionBehaviorItemOutputs {
   readonly selected: Signal<boolean>;
 }
 
-export type SelectionState<T> = State<SelectionBehaviorInputs<T>, SelectionBehaviorOutputs<T>>;
-
-export type SelectionItemState<T> = State<
-  SelectionBehaviorItemInputs<T>,
-  SelectionBehaviorItemOutputs
->;
-
-export function getSelectionBehavior<T>(): Behavior<
+export type SelectionBehavior<T> = Behavior<
   SelectionBehaviorInputs<T>,
   SelectionBehaviorItemInputs<T>,
   SelectionBehaviorOutputs<T>,
   SelectionBehaviorItemOutputs
-> {
+>;
+
+export type SelectionState<T> = ParentStateType<SelectionBehavior<T>>;
+
+export type SelectionItemState<T> = ItemStateType<SelectionBehavior<T>>;
+
+export function getSelectionBehavior<T>(): SelectionBehavior<T> {
   return {
     computations: {
       selectedValues: writable(({ inputValue }) => inputValue()),

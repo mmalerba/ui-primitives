@@ -1,28 +1,44 @@
 import { computed, linkedSignal, signal, Signal, untracked, WritableSignal } from '@angular/core';
 
-export type State<
-  I extends Record<PropertyKey, any> = Record<PropertyKey, any>,
-  O extends Record<PropertyKey, any> = I,
-> = {
-  [K in Exclude<keyof I, keyof O>]: I[K];
-} & {
-  [K in keyof O]: O[K];
-};
+/**
+ * Internal property on a computation function that indicates the computation should be wrapped into
+ * a writeable signal rather than a readonly one.
+ */
+const WRITABLE = Symbol('writable');
 
+/**
+ * Internal property on item state that holds a signal of the item's index in the list. This allows
+ * the item's state to update reactively based on the item's position in the list.
+ */
+const INDEX = Symbol('index');
+
+/**
+ * An object representing the state associated with an element. Each property may be a signal to
+ * represent reactive state, or a plain value to represent static state.
+ */
+export type State = Record<PropertyKey, any>;
+
+/**
+ * Unwraps the value type from a `Signal`, or leaves the type unchanged if it is not a signal.
+ */
 export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
 
+/**
+ * A state computation function to be wrapped in a `computed` / `linkedSignal`. Given a set of named
+ * arguments, it produces a value for the output signal.
+ */
+export type StateComputationFn<A extends Record<string, any>, O> = ((args: A) => UnwrapSignal<O>) &
+  (O extends WritableSignal<any> ? { [WRITABLE]: true } : {});
+
+/**
+ * The full set of computation functions for the given input and output state objects. Each property
+ * in the output must have a computation function. If the same property exists in the input, the
+ * computation function recevies that input value as an additional argument.
+ */
 export type StateComputations<A extends Record<string, any>, I extends State, O extends State> = {
-  [K in keyof (I | O)]: I[K] extends Signal<any>
-    ? ((args: A & { inputValue: I[K] }) => UnwrapSignal<O[K]>) &
-        (O[K] extends WritableSignal<any> ? { [WRITABLE]: true } : {})
+  [K in keyof O]: O[K] extends Signal<any>
+    ? StateComputationFn<K extends keyof I ? A & { inputValue: I[K] } : A, O[K]>
     : never;
-} & {
-  [K in Exclude<keyof O, keyof I>]: O[K] extends Signal<any>
-    ? ((args: A) => UnwrapSignal<O[K]>) &
-        (O[K] extends WritableSignal<any> ? { [WRITABLE]: true } : {})
-    : never;
-} & {
-  [K in keyof O]: unknown;
 };
 
 export type Behavior<
@@ -30,26 +46,26 @@ export type Behavior<
   II extends State,
   PO extends State,
   IO extends State,
-> = ({} extends PO
-  ? { computations?: undefined }
+> = (PO extends Record<PropertyKey, never>
+  ? { computations?: never }
   : {
       computations: StateComputations<
         {
-          self: State<PI, PO>;
-          items: Signal<readonly State<II, IO>[]>;
+          self: PI & PO;
+          items: Signal<readonly (II & IO)[]>;
           inputs: { self: PI; items: Signal<readonly II[]> };
         },
         PI,
         PO
       >;
     }) &
-  ({} extends IO
-    ? { itemComputations?: undefined }
+  (IO extends Record<PropertyKey, never>
+    ? { itemComputations?: never }
     : {
         itemComputations: StateComputations<
           {
-            self: State<II, IO>;
-            parent: State<PI, PO>;
+            self: II & IO;
+            parent: PI & PO;
             index: Signal<number>;
             inputs: { self: II; parent: PI };
           },
@@ -57,31 +73,36 @@ export type Behavior<
           IO
         >;
       }) & {
-    sync?: ((arg: { parent: State<PI, PO>; items: Signal<readonly State<II, IO>[]> }) => void)[];
+    sync?: ((arg: { parent: PI & PO; items: Signal<readonly (II & IO)[]> }) => void)[];
   };
 
 export type ComposedBehavior<
-  PI1 extends State,
-  II1 extends State,
-  PO1 extends State,
-  IO1 extends State,
-  PI2 extends State,
-  II2 extends State,
-  PO2 extends State,
-  IO2 extends State,
-> = Behavior<
-  PI1 & Omit<PI2, keyof PO1>,
-  II1 & Omit<II2, keyof IO1>,
-  State<PO1, PO2>,
-  State<IO1, IO2>
->;
+  B1 extends Behavior<any, any, any, any>,
+  B2 extends Behavior<any, any, any, any>,
+> =
+  B1 extends Behavior<infer PI1, infer II1, infer PO1, infer IO1>
+    ? B2 extends Behavior<infer PI2, infer II2, infer PO2, infer IO2>
+      ? Behavior<PI1 & Omit<PI2, keyof PO1>, II1 & Omit<II2, keyof IO1>, PO1 & PO2, IO1 & IO2>
+      : never
+    : never;
 
-const WRITABLE = Symbol('writable');
+export type ParentInputType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<infer PI, any, any, any> ? PI : never;
 
-// Special property on item state that holds the index of the item in the list. We need this since
-// the item can move around in the list and we want the item's state to be able to update based on
-// changes in its index.
-const INDEX = Symbol('index');
+export type ItemInputType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<any, infer II, any, any> ? II : never;
+
+export type ParentOutputType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<any, any, infer PO, any> ? PO : never;
+
+export type ItemOutputType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<any, any, any, infer IO> ? IO : never;
+
+export type ParentStateType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<infer PI, any, infer PO, any> ? PI & PO : never;
+
+export type ItemStateType<T extends Behavior<any, any, any, any>> =
+  T extends Behavior<any, infer II, any, infer IO> ? II & IO : never;
 
 export function applyBehavior<
   PI extends State,
@@ -90,7 +111,7 @@ export function applyBehavior<
   IO extends State,
 >(behavior: Behavior<PI, II, PO, IO>, parentInputs: PI, itemsInputs: Signal<readonly II[]>) {
   // Create the parent state
-  const parentState: State<PI, PO> = { ...parentInputs };
+  const parentState: PI & PO = { ...parentInputs };
   for (const [property, computation] of Object.entries(behavior.computations ?? {})) {
     if (!computation) {
       continue;
@@ -101,7 +122,7 @@ export function applyBehavior<
         items: itemStates,
         inputs: { self: parentInputs, items: itemsInputs },
         inputValue: parentInputs[property],
-      }),
+      } as any),
     );
     // Make the state property writable if it's marked as such in the behavior.
     if ((computation as any)[WRITABLE]) {
@@ -113,7 +134,7 @@ export function applyBehavior<
   // for a child even as it moves around in the list of items.
   const itemStatesMap = linkedSignal<
     readonly II[],
-    Map<II, State<II, IO> & { [INDEX]: WritableSignal<number> }>
+    Map<II, II & IO & { [INDEX]: WritableSignal<number> }>
   >({
     source: itemsInputs,
     computation: (newItemsInputs, previous) => {
@@ -140,7 +161,7 @@ export function applyBehavior<
             return [itemInputs, previousItemStates.get(itemInputs)!] as const;
           }
           // For new ones, create a new state for them.
-          const itemState: State<II, IO> & { [INDEX]: WritableSignal<number> } = {
+          const itemState: II & IO & { [INDEX]: WritableSignal<number> } = {
             ...itemInputs,
             [INDEX]: signal(idx),
           };
@@ -155,7 +176,7 @@ export function applyBehavior<
                 index: itemState[INDEX],
                 inputs: { self: itemInputs, parent: parentInputs },
                 inputValue: itemInputs[property],
-              }),
+              } as any),
             );
             // Make the state property writable if it's marked as such in the behavior.
             if ((computation as any)[WRITABLE]) {
@@ -180,18 +201,9 @@ export function applyBehavior<
 
 // TODO: rework this to be compatible with accessing full inputs
 export function composeBehavior<
-  PI1 extends State,
-  II1 extends State,
-  PO1 extends State,
-  IO1 extends State,
-  PI2 extends State,
-  II2 extends State,
-  PO2 extends State,
-  IO2 extends State,
->(
-  b1: Behavior<PI1, II1, PO1, IO1>,
-  b2: Behavior<PI2, II2, PO2, IO2>,
-): ComposedBehavior<PI1, II1, PO1, IO1, PI2, II2, PO2, IO2> {
+  B1 extends Behavior<any, any, any, any>,
+  B2 extends Behavior<any, any, any, any>,
+>(b1: B1, b2: B2): ComposedBehavior<B1, B2> {
   const computations = composeComputations(
     b1.computations as StateComputations<Record<string, unknown>, State, State>,
     b2.computations as StateComputations<Record<string, unknown>, State, State>,
@@ -205,7 +217,7 @@ export function composeBehavior<
     computations,
     itemComputations,
     sync,
-  } as unknown as ComposedBehavior<PI1, II1, PO1, IO1, PI2, II2, PO2, IO2>;
+  } as ComposedBehavior<B1, B2>;
 }
 
 export function writable<T>(fn: T): T & { [WRITABLE]: true } {

@@ -1,5 +1,5 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { Behavior, State, writable } from '../../base/behavior';
+import { Behavior, ItemStateType, ParentStateType, writable } from '../../base/behavior';
 
 export interface ListNavigationBehaviorInputs {
   readonly wrapNavigation: Signal<boolean>;
@@ -21,22 +21,18 @@ export interface ListNavigationBehaviorItemOutputs {
   readonly active: Signal<boolean>;
 }
 
-export type ListNavigationState = State<
-  ListNavigationBehaviorInputs,
-  ListNavigationBehaviorOutputs
->;
-
-export type ListNavigationItemState = State<
-  ListNavigationBehaviorItemInputs,
-  ListNavigationBehaviorItemOutputs
->;
-
-export const listNavigationBehavior: Behavior<
+export type ListNavigationBehavior = Behavior<
   ListNavigationBehaviorInputs,
   ListNavigationBehaviorItemInputs,
   ListNavigationBehaviorOutputs,
   ListNavigationBehaviorItemOutputs
-> = {
+>;
+
+export type ListNavigationState = ParentStateType<ListNavigationBehavior>;
+
+export type ListNavigationItemState = ItemStateType<ListNavigationBehavior>;
+
+export const listNavigationBehavior: ListNavigationBehavior = {
   computations: {
     activatedElement: writable(({ inputValue }) => inputValue()),
     activeIndex: ({ self, items }) => {

@@ -1,5 +1,5 @@
 import { Signal } from '@angular/core';
-import { Behavior, State } from '../../base/behavior';
+import { Behavior, ItemStateType, ParentStateType } from '../../base/behavior';
 
 export interface CompositeFocusBehaviorInputs {
   readonly element: HTMLElement;
@@ -23,22 +23,18 @@ export interface CompositeFocusBehaviorItemOutputs {
   readonly tabindex: Signal<0 | -1>;
 }
 
-export type CompositeFocusState = State<
-  CompositeFocusBehaviorInputs,
-  CompositeFocusBehaviorOutputs
->;
-
-export type CompositeFocusItemState = State<
-  CompositeFocusBehaviorItemInputs,
-  CompositeFocusBehaviorItemOutputs
->;
-
-export const compositeFocusBehavior: Behavior<
+export type CompositeFocusBehavior = Behavior<
   CompositeFocusBehaviorInputs,
   CompositeFocusBehaviorItemInputs,
   CompositeFocusBehaviorOutputs,
   CompositeFocusBehaviorItemOutputs
-> = {
+>;
+
+export type CompositeFocusState = ParentStateType<CompositeFocusBehavior>;
+
+export type CompositeFocusItemState = ItemStateType<CompositeFocusBehavior>;
+
+export const compositeFocusBehavior: CompositeFocusBehavior = {
   computations: {
     tabindex: ({ self }) =>
       self.focusStrategy() === 'activedescendant' && !self.compositeDisabled() ? 0 : -1,
