@@ -2,27 +2,29 @@ import {
   composeSchema,
   ItemInputType,
   ItemOutputType,
+  ItemStateType,
   ParentInputType,
   ParentOutputType,
+  ParentStateType,
 } from '../../base/state';
 import { compositeDisabledSchema } from '../composite-disabled/composite-disabled-state';
 import { compositeFocusSchema } from '../composite-focus/composite-focus-state';
 import { listNavigationSchema } from '../list-navigation/list-navigation-state';
 import { getSelectionSchema } from '../selection/selection-state';
 
-export type ListboxSchema = ReturnType<typeof getListboxSchema>;
+export type ListboxSchema<T> = ReturnType<typeof getListboxSchema<T>>;
 
-export type ListboxInputs = ParentInputType<ListboxSchema>;
+export type ListboxInputs<T> = ParentInputType<ListboxSchema<T>>;
 
-export type ListboxItemInputs = ItemInputType<ListboxSchema>;
+export type ListboxOptionInputs<T> = ItemInputType<ListboxSchema<T>>;
 
-export type ListboxOutputs = ParentOutputType<ListboxSchema>;
+export type ListboxOutputs<T> = ParentOutputType<ListboxSchema<T>>;
 
-export type ListboxItemOutputs = ItemOutputType<ListboxSchema>;
+export type ListboxOptionOutputs<T> = ItemOutputType<ListboxSchema<T>>;
 
-export type ListboxState = ParentInputType<ListboxSchema>;
+export type ListboxState<T> = ParentStateType<ListboxSchema<T>>;
 
-export type ListboxItemState = ItemInputType<ListboxSchema>;
+export type ListboxOptionState<T> = ItemStateType<ListboxSchema<T>>;
 
 export function getListboxSchema<T>() {
   return composeSchema(

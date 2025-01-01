@@ -5,10 +5,11 @@ export interface SelectionInputs<T> {
   readonly activeIndex: Signal<number>;
   readonly selectedValues: Signal<readonly T[]>;
   readonly selectionType: Signal<'single' | 'multiple'>;
+  readonly selectionStrategy: Signal<'followfocus' | 'explicit'>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
 }
 
-export interface SelectionItemInputs<T> {
+export interface SelectionOptionInputs<T> {
   readonly value: Signal<T>;
   readonly disabled: Signal<boolean>;
 }
@@ -19,20 +20,20 @@ export interface SelectionOutputs<T> {
   readonly lastSelectedIndex: WritableSignal<number>;
 }
 
-export interface SelectionItemOutputs {
+export interface SelectionOptionOutputs {
   readonly selected: Signal<boolean>;
 }
 
 export type SelectionSchema<T> = StateSchema<
   SelectionInputs<T>,
-  SelectionItemInputs<T>,
+  SelectionOptionInputs<T>,
   SelectionOutputs<T>,
-  SelectionItemOutputs
+  SelectionOptionOutputs
 >;
 
 export type SelectionState<T> = ParentStateType<SelectionSchema<T>>;
 
-export type SelectionItemState<T> = ItemStateType<SelectionSchema<T>>;
+export type SelectionOptionState<T> = ItemStateType<SelectionSchema<T>>;
 
 export function getSelectionSchema<T>(): SelectionSchema<T> {
   return {

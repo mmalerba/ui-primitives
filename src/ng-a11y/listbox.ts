@@ -9,26 +9,13 @@ import {
   Signal,
 } from '@angular/core';
 import { createState } from '../primitives/base/state';
+import { ListboxController } from '../primitives/composables/listbox/listbox-controller';
 import {
-  CompositeDisabledItemState,
-  CompositeDisabledState,
-} from '../primitives/composables/composite-disabled/composite-disabled-state';
-import { CompositeFocusController } from '../primitives/composables/composite-focus/composite-focus-controller';
-import {
-  CompositeFocusItemState,
-  CompositeFocusState,
-} from '../primitives/composables/composite-focus/composite-focus-state';
-import { ListNavigationController } from '../primitives/composables/list-navigation/list-navigation-controller';
-import {
-  ListNavigationItemState,
-  ListNavigationState,
-} from '../primitives/composables/list-navigation/list-navigation-state';
-import { getListboxSchema } from '../primitives/composables/listbox/listbox-state';
-import { SelectionController } from '../primitives/composables/selection/selection-controller';
-import {
-  SelectionItemState,
-  SelectionState,
-} from '../primitives/composables/selection/selection-state';
+  getListboxSchema,
+  ListboxOptionInputs,
+  ListboxOptionState,
+  ListboxState,
+} from '../primitives/composables/listbox/listbox-state';
 
 @Directive({
   selector: '[listbox]',
@@ -37,9 +24,9 @@ import {
     '[attr.aria-activedescendant]': 'state.activeDescendantId()',
     '[attr.disabled]': 'state.compositeDisabled() || null',
     '[attr.tabindex]': 'state.tabindex()',
-    '(keydown)':
-      'navigationController.keydownManager().handle($event); selectionController.keydownManager().handle($event)',
-    '(focusout)': 'focusController.focusoutManager.handle($event)',
+    '(click)': 'listboxController.handleClick($event)',
+    '(keydown)': 'listboxController.keydownManager().handle($event)',
+    '(focusout)': 'listboxController.focusoutManager.handle($event)',
   },
   exportAs: 'listbox',
 })
@@ -55,32 +42,15 @@ export class ListboxDirective {
   readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
   readonly selectedValues = computed<number[]>(() => []);
   readonly selectionType = computed<'single' | 'multiple'>(() => 'single');
+  readonly selectionStrategy = computed<'followfocus' | 'explicit'>(() => 'followfocus');
   readonly compareValues = computed<(a: number, b: number) => boolean>(() => (a, b) => a === b);
 
   readonly items = contentChildren(ListboxOptionDirective);
 
-  readonly state: CompositeDisabledState &
-    CompositeFocusState &
-    ListNavigationState &
-    SelectionState<number>;
-  readonly itemStates: Signal<
-    readonly (CompositeDisabledItemState &
-      CompositeFocusItemState &
-      ListNavigationItemState &
-      SelectionItemState<number>)[]
-  >;
-  readonly itemStatesMap: Signal<
-    Map<
-      unknown,
-      CompositeDisabledItemState &
-        CompositeFocusItemState &
-        ListNavigationItemState &
-        SelectionItemState<number>
-    >
-  >;
-  readonly navigationController: ListNavigationController;
-  readonly focusController: CompositeFocusController;
-  readonly selectionController: SelectionController<number>;
+  readonly state: ListboxState<number>;
+  readonly itemStates: Signal<readonly ListboxOptionState<number>[]>;
+  readonly itemStatesMap: Signal<Map<ListboxOptionInputs<number>, ListboxOptionState<number>>>;
+  readonly listboxController: ListboxController;
 
   constructor() {
     const { parentState, itemStatesMap, itemStates, syncFns } = createState(
@@ -91,9 +61,7 @@ export class ListboxDirective {
     this.state = parentState;
     this.itemStatesMap = itemStatesMap;
     this.itemStates = itemStates;
-    this.navigationController = new ListNavigationController(parentState, itemStates);
-    this.focusController = new CompositeFocusController(parentState, itemStates);
-    this.selectionController = new SelectionController<number>(parentState, itemStates);
+    this.listboxController = new ListboxController(parentState, itemStates);
 
     for (const fn of syncFns) {
       effect(fn);

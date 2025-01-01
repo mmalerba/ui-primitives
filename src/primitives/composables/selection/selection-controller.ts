@@ -2,12 +2,12 @@
 
 import { computed, Signal } from '@angular/core';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
-import { SelectionItemState, SelectionState } from './selection-state';
+import { SelectionOptionState, SelectionState } from './selection-state';
 
-export class SelectionController<T> {
+export class SelectionController {
   constructor(
-    private readonly parent: SelectionState<T>,
-    private readonly items: Signal<readonly SelectionItemState<T>[]>,
+    private readonly parent: SelectionState<any>,
+    private readonly options: Signal<readonly SelectionOptionState<any>[]>,
   ) {}
 
   keydownManager = computed(() =>
@@ -39,7 +39,7 @@ export class SelectionController<T> {
   }
 
   selectAll() {
-    this.setSelection(this.items().map((_, i) => i));
+    this.setSelection(this.options().map((_, i) => i));
     this.parent.lastSelectedIndex.set(-1);
   }
 
@@ -49,7 +49,7 @@ export class SelectionController<T> {
   }
 
   toggleAll() {
-    if (this.parent.selectedIndices().length === this.items().length) {
+    if (this.parent.selectedIndices().length === this.options().length) {
       this.deselectAll();
     } else {
       this.selectAll();
@@ -61,7 +61,7 @@ export class SelectionController<T> {
   }
 
   selectRange(fromIndex: number, toIndex: number) {
-    const upper = Math.min(Math.max(fromIndex, toIndex), this.items().length - 1);
+    const upper = Math.min(Math.max(fromIndex, toIndex), this.options().length - 1);
     const lower = Math.max(Math.min(fromIndex, toIndex), 0);
     const range = Array.from({ length: upper - lower + 1 }, (_, i) => lower + i);
     this.setSelection([...this.parent.selectedIndices(), ...range]);
@@ -69,14 +69,14 @@ export class SelectionController<T> {
   }
 
   private setSelection(selection: number[]) {
-    const newSelection = selection.map((i) => this.items()[i].value());
+    const newSelection = selection.map((i) => this.options()[i].value());
     const currentSelection = this.parent.selectedValues();
     if (!this.isSelectionEqual(newSelection, currentSelection)) {
       this.parent.selectedValues.set(newSelection);
     }
   }
 
-  private isSelectionEqual(s1: readonly T[], s2: readonly T[]): boolean {
+  private isSelectionEqual(s1: readonly unknown[], s2: readonly unknown[]): boolean {
     if (s1.length !== s2.length) {
       return false;
     }
