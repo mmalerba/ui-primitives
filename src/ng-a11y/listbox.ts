@@ -24,9 +24,9 @@ import {
     '[attr.aria-activedescendant]': 'state.activeDescendantId()',
     '[attr.disabled]': 'state.compositeDisabled() || null',
     '[attr.tabindex]': 'state.tabindex()',
-    '(click)': 'listboxController.handleClick($event)',
-    '(keydown)': 'listboxController.keydownManager().handle($event)',
-    '(focusout)': 'listboxController.focusoutManager.handle($event)',
+    '(click)': 'listboxController.handlers.click($event)',
+    '(keydown)': 'listboxController.handlers.keydown($event)',
+    '(focusout)': 'listboxController.handlers.focusout($event)',
   },
   exportAs: 'listbox',
 })

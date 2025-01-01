@@ -1,5 +1,7 @@
-import { computed, Signal } from '@angular/core';
+import { Signal } from '@angular/core';
+import { Controller } from '../../base/controller';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
+import { MouseButton, MouseEventManager } from '../../base/mouse-event-manager';
 import {
   getIndex,
   getNextIndex,
@@ -7,29 +9,21 @@ import {
   ListNavigationState,
 } from './list-navigation-state';
 
-export class ListNavigationController {
+export class ListNavigationController implements Controller {
+  readonly handlers = {
+    click: (e: MouseEvent) => this.clickManager.handle(e),
+    keydown: (e: KeyboardEvent) => this.getKeydownManager().handle(e),
+  } as const;
+
+  private clickManager = new MouseEventManager().on(MouseButton.Main, (event) => {
+    const index = this.items().findIndex((item) => item.element.contains(event.target as Node));
+    this.navigateTo(index);
+  });
+
   constructor(
     private readonly list: ListNavigationState,
     private readonly items: Signal<readonly ListNavigationItemState[]>,
   ) {}
-
-  readonly keydownManager = computed(() => {
-    const previousKey = this.list.orientation() === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
-    const nextKey = this.list.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
-    return new KeyboardEventManager()
-      .on(previousKey, () => {
-        this.navigatePrevious();
-      })
-      .on(nextKey, () => {
-        this.navigateNext();
-      })
-      .on('Home', () => {
-        this.navigateFirst();
-      })
-      .on('End', () => {
-        this.navigateLast();
-      });
-  });
 
   navigateTo(index: number): void {
     this.navigate(index, () => index);
@@ -63,5 +57,23 @@ export class ListNavigationController {
     if (index !== -1) {
       this.list.activatedElement.set(this.items()[index].element);
     }
+  }
+
+  private getKeydownManager() {
+    const previousKey = this.list.orientation() === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
+    const nextKey = this.list.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
+    return new KeyboardEventManager()
+      .on(previousKey, () => {
+        this.navigatePrevious();
+      })
+      .on(nextKey, () => {
+        this.navigateNext();
+      })
+      .on('Home', () => {
+        this.navigateFirst();
+      })
+      .on('End', () => {
+        this.navigateLast();
+      });
   }
 }

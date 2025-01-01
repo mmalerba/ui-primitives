@@ -10,6 +10,7 @@ export interface SelectionInputs<T> {
 }
 
 export interface SelectionOptionInputs<T> {
+  readonly element: HTMLElement;
   readonly value: Signal<T>;
   readonly disabled: Signal<boolean>;
 }

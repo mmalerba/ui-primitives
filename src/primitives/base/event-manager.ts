@@ -24,6 +24,11 @@ export interface EventHandlerConfig<T extends Event> extends EventHandlerOptions
 
 export abstract class EventManager<T extends Event> {
   protected defaultHandlerOptions: EventHandlerOptions;
+  protected composed: EventManager<T>[] = [];
+
+  static compose<T extends Event>(...managers: EventManager<T>[]): EventManager<T> {
+    return new GenericEventManager<T>().composeWith(...managers);
+  }
 
   constructor(defaultHandlerOptions?: Partial<EventHandlerOptions>) {
     this.defaultHandlerOptions = {
@@ -34,9 +39,13 @@ export abstract class EventManager<T extends Event> {
   }
 
   handle(event: T): true | undefined {
+    const handled = this.composed.reduce<true | undefined>(
+      (acc, manager) => manager.handle(event) ?? acc,
+      undefined,
+    );
     const config = this.getHandler(event);
     if (!config || config.handler(event) === false) {
-      return undefined;
+      return handled;
     }
     if (config.stopPropagation) {
       event.stopPropagation();
@@ -45,6 +54,11 @@ export abstract class EventManager<T extends Event> {
       event.preventDefault();
     }
     return true;
+  }
+
+  composeWith(...managers: EventManager<T>[]): this {
+    this.composed.push(...managers);
+    return this;
   }
 
   protected abstract getHandler(event: T): EventHandlerConfig<T> | null;

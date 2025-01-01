@@ -1,20 +1,20 @@
-// TODO: don't select disabled items.
-
-import { computed, Signal } from '@angular/core';
+import { Signal } from '@angular/core';
+import { Controller } from '../../base/controller';
+import { ModifierKey } from '../../base/event-manager';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
+import { MouseButton, MouseEventManager } from '../../base/mouse-event-manager';
 import { SelectionOptionState, SelectionState } from './selection-state';
 
-export class SelectionController {
+export class SelectionController implements Controller {
+  readonly handlers = {
+    click: (e: MouseEvent) => this.getClickManager().handle(e),
+    keydown: (e: KeyboardEvent) => this.getKeydownManager().handle(e),
+  } as const;
+
   constructor(
     private readonly parent: SelectionState<any>,
     private readonly options: Signal<readonly SelectionOptionState<any>[]>,
   ) {}
-
-  keydownManager = computed(() =>
-    new KeyboardEventManager().on(' ', () => {
-      this.select();
-    }),
-  );
 
   select() {
     const index = this.parent.activeIndex();
@@ -86,5 +86,30 @@ export class SelectionController {
       }
     }
     return true;
+  }
+
+  private getClickManager() {
+    return this.parent.selectionType() === 'multiple'
+      ? new MouseEventManager().on(MouseButton.Main, () => {
+          this.select();
+        })
+      : new MouseEventManager()
+          .on(MouseButton.Main, () => {
+            this.toggle();
+          })
+          .on(ModifierKey.Shift, MouseButton.Main, () => {
+            this.selectContiguousRange();
+          });
+  }
+
+  private getKeydownManager() {
+    // When using the followfocus strategy, the behavior is highly dependent on how navigation
+    // works in the fully composed component. The implementation should be left up to the
+    // composing class, it doesn't really make sense to provide a default implementation.
+    return this.parent.selectionStrategy() === 'followfocus'
+      ? new KeyboardEventManager()
+      : new KeyboardEventManager().on(' ', () => {
+          this.select();
+        });
   }
 }
