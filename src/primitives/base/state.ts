@@ -23,6 +23,17 @@ export type State = Record<PropertyKey, any>;
  */
 export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
 
+export type ParentComputationArgs<PI, II, PO, IO> = {
+  self: PI & PO;
+  items: Signal<readonly (II & IO)[]>;
+};
+
+export type ItemComputationArgs<PI, II, PO, IO> = {
+  self: II & IO;
+  parent: PI & PO;
+  index: Signal<number>;
+};
+
 /**
  * A state computation function to be wrapped in a `computed` / `linkedSignal`. Given a set of named
  * arguments, it produces a value for the output signal.
@@ -54,29 +65,12 @@ export type StateSchema<
 > = (PO extends Record<PropertyKey, never>
   ? { computations?: never }
   : {
-      computations: StateComputations<
-        {
-          self: PI & PO;
-          items: Signal<readonly (II & IO)[]>;
-          inputs: { self: PI; items: Signal<readonly II[]> };
-        },
-        PI,
-        PO
-      >;
+      computations: StateComputations<ParentComputationArgs<PI, II, PO, IO>, PI, PO>;
     }) &
   (IO extends Record<PropertyKey, never>
     ? { itemComputations?: never }
     : {
-        itemComputations: StateComputations<
-          {
-            self: II & IO;
-            parent: PI & PO;
-            index: Signal<number>;
-            inputs: { self: II; parent: PI };
-          },
-          II,
-          IO
-        >;
+        itemComputations: StateComputations<ItemComputationArgs<PI, II, PO, IO>, II, IO>;
       }) & {
     sync?: ((arg: { parent: PI & PO; items: Signal<readonly (II & IO)[]> }) => void)[];
   };
@@ -145,7 +139,6 @@ export function createState<PI extends State, II extends State, PO extends State
       computation({
         self: parentState,
         items: itemStates,
-        inputs: { self: parentInputs, items: itemsInputs },
         inputValue: parentInputs[property],
       } as any),
     );
@@ -199,7 +192,6 @@ export function createState<PI extends State, II extends State, PO extends State
                 self: itemState,
                 parent: parentState,
                 index: itemState[INDEX],
-                inputs: { self: itemInputs, parent: parentInputs },
                 inputValue: itemInputs[property],
               } as any),
             );
@@ -289,4 +281,37 @@ function composeComputationFunctions(
     (fn as any)[WRITABLE] = true;
   }
   return fn;
+}
+
+// TODO: WIP
+export function defaults<
+  PI extends State,
+  II extends State,
+  PO extends State,
+  IO extends State,
+  PD extends Partial<
+    StateComputations<ParentComputationArgs<Partial<PI>, Partial<II>, PI, II>, Partial<PI>, PI>
+  >,
+  ID extends Partial<
+    StateComputations<ItemComputationArgs<Partial<PI>, Partial<II>, PI, II>, Partial<II>, II>
+  >,
+>(
+  schema: StateSchema<PI, II, PO, IO>,
+  parentDefaults: PD,
+  itemDefaults: ID,
+): StateSchema<Partial<PI> & Omit<PI, keyof PD>, Partial<II> & Omit<II, keyof ID>, PO, IO> {
+  // TODO: maybe instead of allowing arbitrary partial computations, require computations for
+  // anything that's an optional signal in the input.
+
+  // TODO: create a defaults schema to compose with the original schema.
+  return schema as any;
+
+  // Goal:
+  // interface SomeInputs {
+  //   readonly a: Signal<number>;
+  //   readonly b?: Signal<string>;
+  // }
+  // construct someSchema working with the required version of the inputs Required<SomeInputs>
+  // then run it through defaults to get the final schema with the optional inputs (SomeInputs)
+  // const x = defaults(someSchema, {}, {})
 }
