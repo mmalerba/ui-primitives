@@ -1,38 +1,38 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { Behavior, ItemStateType, ParentStateType, writable } from '../../base/behavior';
+import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
-export interface ListNavigationBehaviorInputs {
+export interface ListNavigationInputs {
   readonly wrapNavigation: Signal<boolean>;
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<'horizontal' | 'vertical'>;
 }
 
-export interface ListNavigationBehaviorItemInputs {
+export interface ListNavigationItemInputs {
   readonly element: HTMLElement;
   readonly compositeDisabled: Signal<boolean>;
 }
 
-export interface ListNavigationBehaviorOutputs {
+export interface ListNavigationOutputs {
   readonly activatedElement: WritableSignal<Element | null>;
   readonly activeIndex: Signal<number>;
 }
 
-export interface ListNavigationBehaviorItemOutputs {
+export interface ListNavigationItemOutputs {
   readonly active: Signal<boolean>;
 }
 
-export type ListNavigationBehavior = Behavior<
-  ListNavigationBehaviorInputs,
-  ListNavigationBehaviorItemInputs,
-  ListNavigationBehaviorOutputs,
-  ListNavigationBehaviorItemOutputs
+export type ListNavigationSchema = StateSchema<
+  ListNavigationInputs,
+  ListNavigationItemInputs,
+  ListNavigationOutputs,
+  ListNavigationItemOutputs
 >;
 
-export type ListNavigationState = ParentStateType<ListNavigationBehavior>;
+export type ListNavigationState = ParentStateType<ListNavigationSchema>;
 
-export type ListNavigationItemState = ItemStateType<ListNavigationBehavior>;
+export type ListNavigationItemState = ItemStateType<ListNavigationSchema>;
 
-export const listNavigationBehavior: ListNavigationBehavior = {
+export const listNavigationSchema: ListNavigationSchema = {
   computations: {
     activatedElement: writable(({ inputValue }) => inputValue()),
     activeIndex: ({ self, items }) => {

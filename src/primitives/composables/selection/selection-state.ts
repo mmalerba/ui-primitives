@@ -1,40 +1,40 @@
 import { Signal, WritableSignal } from '@angular/core';
-import { Behavior, ItemStateType, ParentStateType, writable } from '../../base/behavior';
+import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
-export interface SelectionBehaviorInputs<T> {
+export interface SelectionInputs<T> {
   readonly activeIndex: Signal<number>;
   readonly selectedValues: Signal<readonly T[]>;
   readonly selectionType: Signal<'single' | 'multiple'>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
 }
 
-export interface SelectionBehaviorItemInputs<T> {
+export interface SelectionItemInputs<T> {
   readonly value: Signal<T>;
   readonly disabled: Signal<boolean>;
 }
 
-export interface SelectionBehaviorOutputs<T> {
+export interface SelectionOutputs<T> {
   readonly selectedValues: WritableSignal<readonly T[]>;
   readonly selectedIndices: Signal<readonly number[]>;
   readonly lastSelectedIndex: WritableSignal<number>;
 }
 
-export interface SelectionBehaviorItemOutputs {
+export interface SelectionItemOutputs {
   readonly selected: Signal<boolean>;
 }
 
-export type SelectionBehavior<T> = Behavior<
-  SelectionBehaviorInputs<T>,
-  SelectionBehaviorItemInputs<T>,
-  SelectionBehaviorOutputs<T>,
-  SelectionBehaviorItemOutputs
+export type SelectionSchema<T> = StateSchema<
+  SelectionInputs<T>,
+  SelectionItemInputs<T>,
+  SelectionOutputs<T>,
+  SelectionItemOutputs
 >;
 
-export type SelectionState<T> = ParentStateType<SelectionBehavior<T>>;
+export type SelectionState<T> = ParentStateType<SelectionSchema<T>>;
 
-export type SelectionItemState<T> = ItemStateType<SelectionBehavior<T>>;
+export type SelectionItemState<T> = ItemStateType<SelectionSchema<T>>;
 
-export function getSelectionBehavior<T>(): SelectionBehavior<T> {
+export function getSelectionSchema<T>(): SelectionSchema<T> {
   return {
     computations: {
       selectedValues: writable(({ inputValue }) => inputValue()),

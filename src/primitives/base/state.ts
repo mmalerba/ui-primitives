@@ -41,7 +41,12 @@ export type StateComputations<A extends Record<string, any>, I extends State, O 
     : never;
 };
 
-export type Behavior<
+/**
+ * Schema that defines how to derive output state properties from input state properties for both a
+ * parent element and associated items. It may additionally define synchronization logic needed for
+ * this state (for exmaple focusing an element programatically when it becomes active).
+ */
+export type StateSchema<
   PI extends State,
   II extends State,
   PO extends State,
@@ -76,43 +81,63 @@ export type Behavior<
     sync?: ((arg: { parent: PI & PO; items: Signal<readonly (II & IO)[]> }) => void)[];
   };
 
-export type ComposedBehavior<
-  B1 extends Behavior<any, any, any, any>,
-  B2 extends Behavior<any, any, any, any>,
+/**
+ * Defines a state schema based on composing two other state schemas.
+ */
+export type ComposedStateSchema<
+  S1 extends StateSchema<any, any, any, any>,
+  S2 extends StateSchema<any, any, any, any>,
 > =
-  B1 extends Behavior<infer PI1, infer II1, infer PO1, infer IO1>
-    ? B2 extends Behavior<infer PI2, infer II2, infer PO2, infer IO2>
-      ? Behavior<PI1 & Omit<PI2, keyof PO1>, II1 & Omit<II2, keyof IO1>, PO1 & PO2, IO1 & IO2>
+  S1 extends StateSchema<infer PI1, infer II1, infer PO1, infer IO1>
+    ? S2 extends StateSchema<infer PI2, infer II2, infer PO2, infer IO2>
+      ? StateSchema<PI1 & Omit<PI2, keyof PO1>, II1 & Omit<II2, keyof IO1>, PO1 & PO2, IO1 & IO2>
       : never
     : never;
 
-export type ParentInputType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<infer PI, any, any, any> ? PI : never;
+/**
+ * Extracts the parent input state type from a state schema.
+ */
+export type ParentInputType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<infer PI, any, any, any> ? PI : never;
 
-export type ItemInputType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<any, infer II, any, any> ? II : never;
+/**
+ * Extracts the item input state type from a state schema.
+ */
+export type ItemInputType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<any, infer II, any, any> ? II : never;
 
-export type ParentOutputType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<any, any, infer PO, any> ? PO : never;
+/**
+ * Extracts the parent output state type from a state schema.
+ */
+export type ParentOutputType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<any, any, infer PO, any> ? PO : never;
 
-export type ItemOutputType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<any, any, any, infer IO> ? IO : never;
+/**
+ * Extracts the item output state type from a state schema.
+ */
+export type ItemOutputType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<any, any, any, infer IO> ? IO : never;
 
-export type ParentStateType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<infer PI, any, infer PO, any> ? PI & PO : never;
+/**
+ * Extracts the full parent state type from a state schema.
+ */
+export type ParentStateType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<infer PI, any, infer PO, any> ? PI & PO : never;
 
-export type ItemStateType<T extends Behavior<any, any, any, any>> =
-  T extends Behavior<any, infer II, any, infer IO> ? II & IO : never;
+/**
+ * Extracts the full item state type from a state schema.
+ */
+export type ItemStateType<T extends StateSchema<any, any, any, any>> =
+  T extends StateSchema<any, infer II, any, infer IO> ? II & IO : never;
 
-export function applyBehavior<
-  PI extends State,
-  II extends State,
-  PO extends State,
-  IO extends State,
->(behavior: Behavior<PI, II, PO, IO>, parentInputs: PI, itemsInputs: Signal<readonly II[]>) {
+export function createState<PI extends State, II extends State, PO extends State, IO extends State>(
+  schema: StateSchema<PI, II, PO, IO>,
+  parentInputs: PI,
+  itemsInputs: Signal<readonly II[]>,
+) {
   // Create the parent state
   const parentState: PI & PO = { ...parentInputs };
-  for (const [property, computation] of Object.entries(behavior.computations ?? {})) {
+  for (const [property, computation] of Object.entries(schema.computations ?? {})) {
     if (!computation) {
       continue;
     }
@@ -124,7 +149,7 @@ export function applyBehavior<
         inputValue: parentInputs[property],
       } as any),
     );
-    // Make the state property writable if it's marked as such in the behavior.
+    // Make the state property writable if it's marked as such in the schema.
     if ((computation as any)[WRITABLE]) {
       (parentState as Record<string, unknown>)[property] = linkedSignal(parentState[property]);
     }
@@ -165,7 +190,7 @@ export function applyBehavior<
             ...itemInputs,
             [INDEX]: signal(idx),
           };
-          for (const [property, computation] of Object.entries(behavior.itemComputations ?? {})) {
+          for (const [property, computation] of Object.entries(schema.itemComputations ?? {})) {
             if (!computation) {
               continue;
             }
@@ -178,7 +203,7 @@ export function applyBehavior<
                 inputValue: itemInputs[property],
               } as any),
             );
-            // Make the state property writable if it's marked as such in the behavior.
+            // Make the state property writable if it's marked as such in the schema.
             if ((computation as any)[WRITABLE]) {
               (itemState as Record<string, unknown>)[property] = linkedSignal(itemState[property]);
             }
@@ -194,30 +219,29 @@ export function applyBehavior<
 
   // Create a list of all the sync functions.
   const syncFns =
-    behavior.sync?.map((fn) => () => fn({ parent: parentState, items: itemStates })) ?? [];
+    schema.sync?.map((fn) => () => fn({ parent: parentState, items: itemStates })) ?? [];
 
   return { parentState, itemStatesMap, itemStates, syncFns } as const;
 }
 
-// TODO: rework this to be compatible with accessing full inputs
-export function composeBehavior<
-  B1 extends Behavior<any, any, any, any>,
-  B2 extends Behavior<any, any, any, any>,
->(b1: B1, b2: B2): ComposedBehavior<B1, B2> {
+export function composeSchema<
+  S1 extends StateSchema<any, any, any, any>,
+  S2 extends StateSchema<any, any, any, any>,
+>(s1: S1, s2: S2): ComposedStateSchema<S1, S2> {
   const computations = composeComputations(
-    b1.computations as StateComputations<Record<string, unknown>, State, State>,
-    b2.computations as StateComputations<Record<string, unknown>, State, State>,
+    s1.computations as StateComputations<Record<string, unknown>, State, State>,
+    s2.computations as StateComputations<Record<string, unknown>, State, State>,
   );
   const itemComputations = composeComputations(
-    b1.itemComputations as StateComputations<Record<string, unknown>, State, State>,
-    b2.itemComputations as StateComputations<Record<string, unknown>, State, State>,
+    s1.itemComputations as StateComputations<Record<string, unknown>, State, State>,
+    s2.itemComputations as StateComputations<Record<string, unknown>, State, State>,
   );
-  const sync = [...(b1.sync ?? []), ...(b2.sync ?? [])];
+  const sync = [...(s1.sync ?? []), ...(s2.sync ?? [])];
   return {
     computations,
     itemComputations,
     sync,
-  } as ComposedBehavior<B1, B2>;
+  } as ComposedStateSchema<S1, S2>;
 }
 
 export function writable<T>(fn: T): T & { [WRITABLE]: true } {

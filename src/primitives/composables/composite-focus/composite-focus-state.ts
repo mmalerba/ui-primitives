@@ -1,40 +1,40 @@
 import { Signal } from '@angular/core';
-import { Behavior, ItemStateType, ParentStateType } from '../../base/behavior';
+import { ItemStateType, ParentStateType, StateSchema } from '../../base/state';
 
-export interface CompositeFocusBehaviorInputs {
+export interface CompositeFocusInputs {
   readonly element: HTMLElement;
   readonly activeIndex: Signal<number>;
   readonly focusStrategy: Signal<'activedescendant' | 'rovingtabindex'>;
   readonly compositeDisabled: Signal<boolean>;
 }
 
-export interface CompositeFocusBehaviorItemInputs {
+export interface CompositeFocusItemInputs {
   readonly element: HTMLElement;
   readonly compositeDisabled: Signal<boolean>;
   readonly id: Signal<string>;
 }
 
-export interface CompositeFocusBehaviorOutputs {
+export interface CompositeFocusOutputs {
   readonly tabindex: Signal<0 | -1>;
   readonly activeDescendantId: Signal<string | undefined>;
 }
 
-export interface CompositeFocusBehaviorItemOutputs {
+export interface CompositeFocusItemOutputs {
   readonly tabindex: Signal<0 | -1>;
 }
 
-export type CompositeFocusBehavior = Behavior<
-  CompositeFocusBehaviorInputs,
-  CompositeFocusBehaviorItemInputs,
-  CompositeFocusBehaviorOutputs,
-  CompositeFocusBehaviorItemOutputs
+export type CompositeFocusSchema = StateSchema<
+  CompositeFocusInputs,
+  CompositeFocusItemInputs,
+  CompositeFocusOutputs,
+  CompositeFocusItemOutputs
 >;
 
-export type CompositeFocusState = ParentStateType<CompositeFocusBehavior>;
+export type CompositeFocusState = ParentStateType<CompositeFocusSchema>;
 
-export type CompositeFocusItemState = ItemStateType<CompositeFocusBehavior>;
+export type CompositeFocusItemState = ItemStateType<CompositeFocusSchema>;
 
-export const compositeFocusBehavior: CompositeFocusBehavior = {
+export const compositeFocusSchema: CompositeFocusSchema = {
   computations: {
     tabindex: ({ self }) =>
       self.focusStrategy() === 'activedescendant' && !self.compositeDisabled() ? 0 : -1,

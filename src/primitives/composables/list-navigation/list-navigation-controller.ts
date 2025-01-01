@@ -5,7 +5,7 @@ import {
   getNextIndex,
   ListNavigationItemState,
   ListNavigationState,
-} from './list-navigation-behavior';
+} from './list-navigation-state';
 
 export class ListNavigationController {
   constructor(

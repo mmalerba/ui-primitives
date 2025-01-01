@@ -1,6 +1,6 @@
 import { Signal } from '@angular/core';
 import { GenericEventManager } from '../../base/event-manager';
-import { CompositeFocusItemState, CompositeFocusState } from './composite-focus-behavior';
+import { CompositeFocusItemState, CompositeFocusState } from './composite-focus-state';
 
 export class CompositeFocusController {
   readonly focusoutManager = new GenericEventManager<FocusEvent>().on((e) => {

@@ -8,27 +8,27 @@ import {
   input,
   Signal,
 } from '@angular/core';
-import { applyBehavior } from '../primitives/base/behavior';
+import { createState } from '../primitives/base/state';
 import {
   CompositeDisabledItemState,
   CompositeDisabledState,
-} from '../primitives/behaviors/composite-disabled/composite-disabled-behavior';
+} from '../primitives/composables/composite-disabled/composite-disabled-state';
+import { CompositeFocusController } from '../primitives/composables/composite-focus/composite-focus-controller';
 import {
   CompositeFocusItemState,
   CompositeFocusState,
-} from '../primitives/behaviors/composite-focus/composite-focus-behavior';
-import { CompositeFocusController } from '../primitives/behaviors/composite-focus/composite-focus-controller';
+} from '../primitives/composables/composite-focus/composite-focus-state';
+import { ListNavigationController } from '../primitives/composables/list-navigation/list-navigation-controller';
 import {
   ListNavigationItemState,
   ListNavigationState,
-} from '../primitives/behaviors/list-navigation/list-navigation-behavior';
-import { ListNavigationController } from '../primitives/behaviors/list-navigation/list-navigation-controller';
-import { getListboxBehavior } from '../primitives/behaviors/listbox/listbox-behavior';
+} from '../primitives/composables/list-navigation/list-navigation-state';
+import { getListboxSchema } from '../primitives/composables/listbox/listbox-state';
+import { SelectionController } from '../primitives/composables/selection/selection-controller';
 import {
   SelectionItemState,
   SelectionState,
-} from '../primitives/behaviors/selection/selection-behavior';
-import { SelectionController } from '../primitives/behaviors/selection/selection-controller';
+} from '../primitives/composables/selection/selection-state';
 
 @Directive({
   selector: '[listbox]',
@@ -83,8 +83,8 @@ export class ListboxDirective {
   readonly selectionController: SelectionController<number>;
 
   constructor() {
-    const { parentState, itemStatesMap, itemStates, syncFns } = applyBehavior(
-      getListboxBehavior<number>(),
+    const { parentState, itemStatesMap, itemStates, syncFns } = createState(
+      getListboxSchema<number>(),
       this,
       this.items,
     );

@@ -2,7 +2,7 @@
 
 import { computed, Signal } from '@angular/core';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
-import { SelectionItemState, SelectionState } from './selection-behavior';
+import { SelectionItemState, SelectionState } from './selection-state';
 
 export class SelectionController<T> {
   constructor(
