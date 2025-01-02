@@ -41,8 +41,8 @@ export class ListboxDirective {
   readonly wrapNavigation = input(false);
 
   readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
-  readonly selectedValues = computed<number[]>(() => []);
-  readonly compareValues = computed<(a: number, b: number) => boolean>(() => (a, b) => a === b);
+  readonly selectedValues = computed(() => new Set<number>());
+  readonly compareValues = computed(() => (a: number, b: number) => a === b);
 
   readonly items = contentChildren(ListboxOptionDirective);
 

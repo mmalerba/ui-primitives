@@ -3,20 +3,21 @@ import { ItemStateType, ParentStateType, StateSchema, writable } from '../../bas
 
 export interface SelectionInputs<T> {
   readonly activeIndex: Signal<number>;
-  readonly selectedValues: Signal<readonly T[]>;
+  readonly selectedValues: Signal<Set<T>>;
   readonly selectionType: Signal<'single' | 'multiple'>;
   readonly selectionStrategy: Signal<'followfocus' | 'explicit'>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
+  readonly compositeDisabled: Signal<boolean>;
 }
 
 export interface SelectionOptionInputs<T> {
   readonly element: HTMLElement;
   readonly value: Signal<T>;
-  readonly disabled: Signal<boolean>;
+  readonly compositeDisabled: Signal<boolean>;
 }
 
 export interface SelectionOutputs<T> {
-  readonly selectedValues: WritableSignal<readonly T[]>;
+  readonly selectedValues: WritableSignal<Set<T>>;
   readonly selectedIndices: Signal<readonly number[]>;
   readonly lastSelectedIndex: WritableSignal<number>;
 }
@@ -41,7 +42,7 @@ const schema: SelectionSchema<unknown> = {
     selectedValues: writable(({ inputValue }) => inputValue()),
     selectedIndices: ({ self, items }) =>
       items().reduce<number[]>((acc, item, idx) => {
-        if (self.selectedValues().some((v) => self.compareValues()(v, item.value()))) {
+        if (containsValue(self.selectedValues(), item.value(), self.compareValues())) {
           acc.push(idx);
         }
         return acc;
@@ -55,4 +56,22 @@ const schema: SelectionSchema<unknown> = {
 
 export function selectionSchema<T>(): SelectionSchema<T> {
   return schema as SelectionSchema<T>;
+}
+
+export function containsValue<T>(
+  values: Set<T>,
+  value: T,
+  compare?: (a: T, b: T) => boolean,
+): boolean {
+  if (values.has(value)) {
+    return true;
+  }
+  if (compare) {
+    for (const v of values) {
+      if (compare(v, value)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

@@ -26,27 +26,21 @@ export class ListboxController implements Controller {
   } as const;
 
   private singleSelectionClickManager = new MouseEventManager().on(MouseButton.Main, (event) => {
-    const index = this.options().findIndex(
-      (o) => o.element.contains(event.target as Node) && !o.disabled(),
-    );
+    const index = this.getTargetIndex(event);
     this.navigationController.navigateTo(index);
-    this.selectionController.select();
+    this.selectionController.select(index);
   });
 
   private multiSelectionClickManager = new MouseEventManager()
     .on(MouseButton.Main, (event) => {
-      const index = this.options().findIndex(
-        (o) => o.element.contains(event.target as Node) && !o.disabled(),
-      );
+      const index = this.getTargetIndex(event);
       this.navigationController.navigateTo(index);
-      this.selectionController.toggle();
+      this.selectionController.toggle(index);
     })
     .on(ModifierKey.Shift, MouseButton.Main, (event) => {
-      const index = this.options().findIndex(
-        (o) => o.element.contains(event.target as Node) && !o.disabled(),
-      );
+      const index = this.getTargetIndex(event);
       this.navigationController.navigateTo(index);
-      this.selectionController.selectContiguousRange();
+      this.selectionController.selectContiguousRange(index);
     });
 
   constructor(
@@ -63,34 +57,34 @@ export class ListboxController implements Controller {
     const nextKey = this.listbox.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
     if (this.listbox.selectionType() === 'multiple') {
       if (this.listbox.selectionStrategy() === 'followfocus') {
-        return this.getFollowFocusMultiSelectionKeydownManager(previousKey, nextKey);
+        return this.getMultiSelectionFollowFocusKeydownManager(previousKey, nextKey);
       }
-      return this.getExplicitMultiSelectionKeydownManager(previousKey, nextKey);
+      return this.getMultiSelectionExplicitKeydownManager(previousKey, nextKey);
     } else {
       if (this.listbox.selectionStrategy() === 'explicit') {
-        return this.getExplicitSingleSelectionKeydownManager(previousKey, nextKey);
+        return this.getSingleSelectionExplicitKeydownManager(previousKey, nextKey);
       }
-      return this.getFollowFocusSingleSelectionKeydownManager(previousKey, nextKey);
+      return this.getSingleSelectionFollowFocusKeydownManager(previousKey, nextKey);
     }
   }
 
-  private getFollowFocusSingleSelectionKeydownManager(previousKey: string, nextKey: string) {
+  private getSingleSelectionFollowFocusKeydownManager(previousKey: string, nextKey: string) {
     return new KeyboardEventManager()
       .on(previousKey, () => {
         this.navigationController.navigatePrevious();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on(nextKey, () => {
         this.navigationController.navigateNext();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on('Home', () => {
         this.navigationController.navigateFirst();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on('End', () => {
         this.navigationController.navigateLast();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       }); /*
       .on(
         [ModifierKey.None, ModifierKey.Shift],
@@ -102,7 +96,7 @@ export class ListboxController implements Controller {
       );*/
   }
 
-  private getExplicitSingleSelectionKeydownManager(previousKey: string, nextKey: string) {
+  private getSingleSelectionExplicitKeydownManager(previousKey: string, nextKey: string) {
     return new KeyboardEventManager()
       .on(previousKey, () => {
         this.navigationController.navigatePrevious();
@@ -117,7 +111,7 @@ export class ListboxController implements Controller {
         this.navigationController.navigateLast();
       })
       .on(' ', () => {
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       }); /*
       .on(
         [ModifierKey.None, ModifierKey.Shift],
@@ -128,7 +122,7 @@ export class ListboxController implements Controller {
       );*/
   }
 
-  private getExplicitMultiSelectionKeydownManager(previousKey: string, nextKey: string) {
+  private getMultiSelectionExplicitKeydownManager(previousKey: string, nextKey: string) {
     return new KeyboardEventManager()
       .on(previousKey, () => {
         this.navigationController.navigatePrevious();
@@ -143,18 +137,18 @@ export class ListboxController implements Controller {
         this.navigationController.navigateLast();
       })
       .on(' ', () => {
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, previousKey, () => {
         this.navigationController.navigatePrevious();
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, nextKey, () => {
         this.navigationController.navigateNext();
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, ' ', () => {
-        this.selectionController.selectContiguousRange();
+        this.selectionController.selectContiguousRange(this.listbox.activeIndex());
       })
       .on(ModifierKey.Ctrl | ModifierKey.Shift, 'Home', () => {
         this.selectionController.selectRange(this.listbox.activeIndex(), 0);
@@ -176,35 +170,35 @@ export class ListboxController implements Controller {
       );*/
   }
 
-  private getFollowFocusMultiSelectionKeydownManager(previousKey: string, nextKey: string) {
+  private getMultiSelectionFollowFocusKeydownManager(previousKey: string, nextKey: string) {
     return new KeyboardEventManager()
       .on(previousKey, () => {
         this.navigationController.navigatePrevious();
         this.selectionController.deselectAll();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on(nextKey, () => {
         this.navigationController.navigateNext();
         this.selectionController.deselectAll();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on('Home', () => {
         this.navigationController.navigateFirst();
         this.selectionController.deselectAll();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on('End', () => {
         this.navigationController.navigateLast();
         this.selectionController.deselectAll();
-        this.selectionController.select();
+        this.selectionController.select(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, previousKey, () => {
         this.navigationController.navigatePrevious();
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, nextKey, () => {
         this.navigationController.navigateNext();
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Ctrl, previousKey, () => {
         this.navigationController.navigatePrevious();
@@ -213,10 +207,10 @@ export class ListboxController implements Controller {
         this.navigationController.navigateNext();
       })
       .on(ModifierKey.Ctrl, ' ', () => {
-        this.selectionController.toggle();
+        this.selectionController.toggle(this.listbox.activeIndex());
       })
       .on(ModifierKey.Shift, ' ', () => {
-        this.selectionController.selectContiguousRange();
+        this.selectionController.selectContiguousRange(this.listbox.activeIndex());
       })
       .on(ModifierKey.Ctrl | ModifierKey.Shift, 'Home', () => {
         this.selectionController.selectRange(this.listbox.activeIndex(), 0);
@@ -238,5 +232,9 @@ export class ListboxController implements Controller {
           this.selectionController.select();
         },
       );*/
+  }
+
+  private getTargetIndex(event: MouseEvent) {
+    return this.options().findIndex((option) => option.element.contains(event.target as Node));
   }
 }
