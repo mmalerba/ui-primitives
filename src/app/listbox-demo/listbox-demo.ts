@@ -18,6 +18,9 @@ export class ListboxDemo {
   disabledItems = signal(new Set<number>(), { equal: () => false });
   focusStrategy = signal<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
   orientation = signal<'horizontal' | 'vertical'>('vertical');
+  selectionType = signal<'single' | 'multiple'>('single');
+  selectionStrategy = signal<'followfocus' | 'explicit'>('followfocus');
+  wrapNavigation = signal(false);
 
   listbox = viewChild.required(ListboxDirective);
   controls = viewChild.required(DemoControls);
@@ -27,6 +30,53 @@ export class ListboxDemo {
   );
 
   commands = [
+    {
+      name: 'f',
+      description: 'Toggle focus management strategy',
+      current: this.focusStrategy,
+      match: /^f$/,
+      run: () => {
+        this.focusStrategy.update((s) =>
+          s === 'activedescendant' ? 'rovingtabindex' : 'activedescendant',
+        );
+      },
+    },
+    {
+      name: 'o',
+      description: 'Toggle the orientation of the listbox',
+      current: this.orientation,
+      match: /^o$/,
+      run: () => {
+        this.orientation.update((o) => (o === 'vertical' ? 'horizontal' : 'vertical'));
+      },
+    },
+    {
+      name: 'm',
+      description: 'Toggle selection type',
+      current: this.selectionType,
+      match: /^m$/,
+      run: () => {
+        this.selectionType.update((t) => (t === 'single' ? 'multiple' : 'single'));
+      },
+    },
+    {
+      name: 's',
+      description: 'Toggle selection strategy',
+      current: this.selectionStrategy,
+      match: /^s$/,
+      run: () => {
+        this.selectionStrategy.update((s) => (s === 'followfocus' ? 'explicit' : 'followfocus'));
+      },
+    },
+    {
+      name: 'w',
+      description: 'Toggle wrap navigation',
+      current: computed(() => (this.wrapNavigation() ? 'yes' : 'no')),
+      match: /^w$/,
+      run: () => {
+        this.wrapNavigation.update((w) => !w);
+      },
+    },
     {
       name: '[l, a, <index>]',
       description: 'Prefix to target command at list, active item, or item at given index',
@@ -76,26 +126,6 @@ export class ListboxDemo {
         }
         this.items().splice(target, 1);
         this.items.update((items) => items);
-      },
-    },
-    {
-      name: 'f',
-      description: 'Toggle focus management strategy',
-      current: this.focusStrategy,
-      match: /^f$/,
-      run: () => {
-        this.focusStrategy.update((s) =>
-          s === 'activedescendant' ? 'rovingtabindex' : 'activedescendant',
-        );
-      },
-    },
-    {
-      name: 'o',
-      description: 'Toggle the orientation of the listbox',
-      current: this.orientation,
-      match: /^o$/,
-      run: () => {
-        this.orientation.update((o) => (o === 'vertical' ? 'horizontal' : 'vertical'));
       },
     },
   ];

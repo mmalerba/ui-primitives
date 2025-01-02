@@ -4,6 +4,9 @@
   [disabled]="disabled()"
   [orientation]="orientation()"
   [focusStrategy]="focusStrategy()"
+  [selectionType]="selectionType()"
+  [selectionStrategy]="selectionStrategy()"
+  [wrapNavigation]="wrapNavigation()"
   [class.command-target]="commandTarget() === 'l'"
 >
   @for (item of items(); track item) {
@@ -18,11 +21,22 @@
 </ul>
 <h3>TODO:</h3>
 <ul>
-  <li>multi selection toggle</li>
-  <li>selection follows focus toggle</li>
   <li>selected / disabled interaction</li>
   <li>typeahead</li>
   <li>binding directives</li>
-  <li>default values / schema getter fn</li>
   <li>custom item identity for item map</li>
+  <li>var args compose fn</li>
+  <li>
+    default values
+    <!-- idea, refactor to this format: {
+      computations: {
+        parent: {},
+        items: {},
+      },
+      defaults: {
+        parent: {},
+        items: {},
+      },
+    }-->
+  </li>
 </ul>

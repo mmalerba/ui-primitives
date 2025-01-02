@@ -34,7 +34,7 @@ export type CompositeFocusState = ParentStateType<CompositeFocusSchema>;
 
 export type CompositeFocusItemState = ItemStateType<CompositeFocusSchema>;
 
-export const compositeFocusSchema: CompositeFocusSchema = {
+const schema: CompositeFocusSchema = {
   computations: {
     tabindex: ({ self }) =>
       self.focusStrategy() === 'activedescendant' && !self.compositeDisabled() ? 0 : -1,
@@ -70,3 +70,5 @@ export const compositeFocusSchema: CompositeFocusSchema = {
     },
   ],
 };
+
+export const compositeFocusSchema = () => schema;

@@ -32,7 +32,7 @@ export type ListNavigationState = ParentStateType<ListNavigationSchema>;
 
 export type ListNavigationItemState = ItemStateType<ListNavigationSchema>;
 
-export const listNavigationSchema: ListNavigationSchema = {
+const schema: ListNavigationSchema = {
   computations: {
     activatedElement: writable(({ inputValue }) => inputValue()),
     activeIndex: ({ self, items }) => {
@@ -46,6 +46,8 @@ export const listNavigationSchema: ListNavigationSchema = {
     active: ({ parent, index }) => parent.activeIndex() === index(),
   },
 };
+
+export const listNavigationSchema = () => schema;
 
 export function getNextIndex(
   list: ListNavigationState,

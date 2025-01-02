@@ -28,7 +28,7 @@ export type CompositeDisabledState = ParentStateType<CompositeDisabledSchema>;
 
 export type CompositeDisabledItemState = ItemStateType<CompositeDisabledSchema>;
 
-export const compositeDisabledSchema: CompositeDisabledSchema = {
+const schema: CompositeDisabledSchema = {
   computations: {
     compositeDisabled: ({ self, items }) =>
       self.disabled() || items().every((item) => item.disabled()),
@@ -37,3 +37,5 @@ export const compositeDisabledSchema: CompositeDisabledSchema = {
     compositeDisabled: ({ self, parent }) => self.disabled() || parent.disabled(),
   },
 };
+
+export const compositeDisabledSchema = () => schema;

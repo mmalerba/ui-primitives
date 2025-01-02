@@ -11,9 +11,9 @@ import {
 import { createState } from '../primitives/base/state';
 import { ListboxController } from '../primitives/composables/listbox/listbox-controller';
 import {
-  getListboxSchema,
   ListboxOptionInputs,
   ListboxOptionState,
+  listboxSchema,
   ListboxState,
 } from '../primitives/composables/listbox/listbox-state';
 
@@ -36,13 +36,12 @@ export class ListboxDirective {
   readonly disabled = input(false);
   readonly focusStrategy = input<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
   readonly orientation = input<'horizontal' | 'vertical'>('vertical');
+  readonly selectionType = input<'single' | 'multiple'>('single');
+  readonly selectionStrategy = input<'followfocus' | 'explicit'>('followfocus');
+  readonly wrapNavigation = input(false);
 
-  readonly wrapNavigation = computed(() => false);
-  readonly navigationSkipsDisabled = computed(() => false);
   readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
   readonly selectedValues = computed<number[]>(() => []);
-  readonly selectionType = computed<'single' | 'multiple'>(() => 'single');
-  readonly selectionStrategy = computed<'followfocus' | 'explicit'>(() => 'followfocus');
   readonly compareValues = computed<(a: number, b: number) => boolean>(() => (a, b) => a === b);
 
   readonly items = contentChildren(ListboxOptionDirective);
@@ -54,7 +53,7 @@ export class ListboxDirective {
 
   constructor() {
     const { parentState, itemStatesMap, itemStates, syncFns } = createState(
-      getListboxSchema<number>(),
+      listboxSchema<number>(),
       this,
       this.items,
     );
