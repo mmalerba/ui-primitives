@@ -18,7 +18,7 @@ export interface MouseEventHandlerConfig extends EventHandlerConfig<MouseEvent> 
 }
 
 export class MouseEventManager extends EventManager<MouseEvent> {
-  private handledButtons: MouseEventHandlerConfig[] = [];
+  override configs: MouseEventHandlerConfig[] = [];
 
   on(
     modifiers: number | number[],
@@ -45,7 +45,7 @@ export class MouseEventManager extends EventManager<MouseEvent> {
       button = first;
       handler = second;
     }
-    this.handledButtons.push({
+    this.configs.push({
       button,
       modifiers,
       handler,
@@ -55,12 +55,28 @@ export class MouseEventManager extends EventManager<MouseEvent> {
     return this;
   }
 
-  override getHandler(event: MouseEvent) {
-    for (const config of this.handledButtons) {
+  override override(
+    modifiers: number | number[],
+    button: MouseButton,
+    handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
+    options?: EventHandlerOptions,
+  ): this;
+  override override(
+    button: MouseButton,
+    handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
+    options?: EventHandlerOptions,
+  ): this;
+  override override(...args: any): this {
+    return super.override(...args);
+  }
+
+  getConfigs(event: MouseEvent) {
+    const configs: MouseEventHandlerConfig[] = [];
+    for (const config of this.configs) {
       if (config.button === (event.button ?? 0) && hasModifiers(event, config.modifiers)) {
-        return config;
+        configs.push(config);
       }
     }
-    return null;
+    return configs;
   }
 }

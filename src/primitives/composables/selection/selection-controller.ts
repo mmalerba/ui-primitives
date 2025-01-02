@@ -1,12 +1,66 @@
-import { Signal } from '@angular/core';
+import { computed, Signal } from '@angular/core';
 import { Controller } from '../../base/controller';
+import { ModifierKey } from '../../base/event-manager';
+import { KeyboardEventManager } from '../../base/keyboard-event-manager';
+import { MouseButton, MouseEventManager } from '../../base/mouse-event-manager';
 import { SelectionOptionState, SelectionState } from './selection-state';
 
 export class SelectionController implements Controller {
-  // Note: The mouse and keyboard bindings for selection are tightly coupled to how navigation works
-  // in the composed component. Therefore we don't implement them here and leave their
-  // implementation to the composing class.
-  readonly handlers = {} as const;
+  readonly handlers = {
+    keydown: (e: KeyboardEvent) => this.keydownManager().handle(e),
+    click: (e: MouseEvent) => this.clickManager().handle(e),
+  } as const;
+
+  readonly clickManager = () => {
+    if (this.parent.selectionType() === 'single') {
+      return new MouseEventManager().on(MouseButton.Main, (event) => {
+        this.select(this.getTargetIndex(event));
+      });
+    }
+    return new MouseEventManager()
+      .on(MouseButton.Main, (event) => {
+        this.toggle(this.getTargetIndex(event));
+      })
+      .on(ModifierKey.Shift, MouseButton.Main, (event) => {
+        this.selectContiguousRange(this.getTargetIndex(event));
+      });
+  };
+
+  readonly keydownManager = computed(() => {
+    if (this.parent.selectionStrategy() === 'explicit') {
+      if (this.parent.selectionType() === 'single') {
+        return new KeyboardEventManager().on(' ', () => {
+          this.select(this.parent.activeIndex());
+        });
+      } else {
+        return new KeyboardEventManager()
+          .on(' ', () => {
+            this.toggle(this.parent.activeIndex());
+          })
+          .on(ModifierKey.Shift, ' ', () => {
+            this.selectContiguousRange(this.parent.activeIndex());
+          })
+          .on(ModifierKey.Ctrl, 'a', () => {
+            this.toggleAll();
+          });
+      }
+    } else {
+      if (this.parent.selectionType() === 'single') {
+        return new KeyboardEventManager();
+      } else {
+        return new KeyboardEventManager()
+          .on(ModifierKey.Ctrl, ' ', () => {
+            this.toggle(this.parent.activeIndex());
+          })
+          .on(ModifierKey.Shift, ' ', () => {
+            this.selectContiguousRange(this.parent.activeIndex());
+          })
+          .on(ModifierKey.Ctrl, 'a', () => {
+            this.toggleAll();
+          });
+      }
+    }
+  });
 
   constructor(
     private readonly parent: SelectionState<any>,
@@ -100,5 +154,9 @@ export class SelectionController implements Controller {
 
   private isIndexSelectable(index: number) {
     return this.options()[index] && !this.options()[index].compositeDisabled();
+  }
+
+  private getTargetIndex(event: MouseEvent) {
+    return this.options().findIndex((option) => option.element.contains(event.target as Node));
   }
 }

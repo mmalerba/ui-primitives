@@ -8,7 +8,7 @@ export class CompositeFocusController implements Controller {
     focusout: (e: FocusEvent) => this.focusutManager.handle(e),
   } as const;
 
-  private focusutManager = new GenericEventManager<FocusEvent>().on((e) => {
+  readonly focusutManager = new GenericEventManager<FocusEvent>().on((e) => {
     // If the active element is blurred due to its imminent removal from the DOM,
     // focus the new active element.
     if (this.items()[this.parent.activeIndex()]?.element === e.target) {

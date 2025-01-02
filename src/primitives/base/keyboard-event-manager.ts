@@ -12,7 +12,7 @@ export interface KeyboardEventHandlerConfig extends EventHandlerConfig<KeyboardE
 }
 
 export class KeyboardEventManager extends EventManager<KeyboardEvent> {
-  private handledKeys: KeyboardEventHandlerConfig[] = [];
+  override configs: KeyboardEventHandlerConfig[] = [];
 
   on(
     modifiers: number | number[],
@@ -36,7 +36,7 @@ export class KeyboardEventManager extends EventManager<KeyboardEvent> {
       key = first;
     }
     const handler: VoidFunction = args.shift();
-    this.handledKeys.push({
+    this.configs.push({
       modifiers,
       key,
       handler,
@@ -46,16 +46,32 @@ export class KeyboardEventManager extends EventManager<KeyboardEvent> {
     return this;
   }
 
-  override getHandler(event: KeyboardEvent) {
-    for (const config of this.handledKeys) {
+  override override(
+    modifiers: number | number[],
+    key: string | ((key: string) => boolean),
+    handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
+    options?: Partial<EventHandlerOptions>,
+  ): this;
+  override override(
+    key: string | ((key: string) => boolean),
+    handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
+    options?: Partial<EventHandlerOptions>,
+  ): this;
+  override override(...args: any): this {
+    return super.override(...args);
+  }
+
+  getConfigs(event: KeyboardEvent) {
+    let configs: KeyboardEventHandlerConfig[] = [];
+    for (const config of this.configs) {
       const keyMatches =
         typeof config.key === 'string'
           ? config.key.toUpperCase() === event.key.toUpperCase()
           : config.key(event.key);
       if (keyMatches && hasModifiers(event, config.modifiers)) {
-        return config;
+        configs.push(config);
       }
     }
-    return null;
+    return configs;
   }
 }

@@ -20,15 +20,15 @@ export interface EventHandlerOptions {
 
 export interface EventHandlerConfig<T extends Event> extends EventHandlerOptions {
   handler: (event: T) => void | boolean;
+  override?: boolean;
 }
 
 export abstract class EventManager<T extends Event> {
-  protected defaultHandlerOptions: EventHandlerOptions;
-  protected composed: EventManager<T>[] = [];
+  private submanagers: EventManager<T>[] = [];
 
-  static compose<T extends Event>(...managers: EventManager<T>[]): EventManager<T> {
-    return new GenericEventManager<T>().composeWith(...managers);
-  }
+  protected configs: EventHandlerConfig<T>[] = [];
+
+  protected defaultHandlerOptions: EventHandlerOptions;
 
   constructor(defaultHandlerOptions?: Partial<EventHandlerOptions>) {
     this.defaultHandlerOptions = {
@@ -38,45 +38,63 @@ export abstract class EventManager<T extends Event> {
     };
   }
 
-  handle(event: T): true | undefined {
-    const handled = this.composed.reduce<true | undefined>(
-      (acc, manager) => manager.handle(event) ?? acc,
-      undefined,
-    );
-    const config = this.getHandler(event);
-    if (!config || config.handler(event) === false) {
-      return handled;
-    }
-    if (config.stopPropagation) {
-      event.stopPropagation();
-    }
-    if (config.preventDefault) {
-      event.preventDefault();
-    }
-    return true;
+  static compose<T extends Event>(...managers: EventManager<T>[]) {
+    const composedManager = new GenericEventManager<T>();
+    composedManager.submanagers = managers;
+    return composedManager;
   }
 
-  composeWith(...managers: EventManager<T>[]): this {
-    this.composed.push(...managers);
+  handle(event: T): true | undefined {
+    let configs = [this, ...this.submanagers].flatMap((sm) => sm.getConfigs(event));
+    for (let i = configs.length - 1; i >= 0; i--) {
+      if (configs[i].override) {
+        configs = configs.slice(i);
+        break;
+      }
+    }
+    let handled: true | undefined = undefined;
+    for (const config of configs) {
+      if (!config || config.handler(event) === false) {
+        continue;
+      }
+      handled = true;
+      if (config.stopPropagation) {
+        event.stopPropagation();
+      }
+      if (config.preventDefault) {
+        event.preventDefault();
+      }
+    }
+    return handled;
+  }
+
+  abstract on(...args: [...unknown[]]): this;
+
+  override(...args: Parameters<this['on']>): this {
+    this.on(...args);
+    this.configs[this.configs.length - 1].override = true;
     return this;
   }
 
-  protected abstract getHandler(event: T): EventHandlerConfig<T> | null;
+  protected abstract getConfigs(event: T): EventHandlerConfig<T>[];
 }
 
 export class GenericEventManager<T extends Event> extends EventManager<T> {
-  protected config: EventHandlerConfig<T> | null = null;
-
   on(handler: (event: T) => boolean | void): this {
-    this.config = {
+    this.configs.push({
       ...this.defaultHandlerOptions,
       handler,
-    };
+    });
     return this;
   }
 
-  protected getHandler(_event: T): EventHandlerConfig<T> | null {
-    return this.config;
+  override override(handler: (event: T) => boolean | void): this;
+  override override(...args: any): this {
+    return super.override(...args);
+  }
+
+  getConfigs(_event: T): EventHandlerConfig<T>[] {
+    return this.configs;
   }
 }
 
