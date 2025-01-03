@@ -1,37 +1,37 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
-export interface ListNavigationInputs {
+export type ListNavigationInputs = {
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<'horizontal' | 'vertical'>;
-}
+};
 
-export interface ListNavigationItemInputs {
+export type ListNavigationItemInputs = {
   readonly element: HTMLElement;
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export interface ListNavigationOutputs {
+export type ListNavigationOutputs = {
   readonly activatedElement: WritableSignal<Element | null>;
   readonly activeIndex: Signal<number>;
-}
+};
 
-export interface ListNavigationItemOutputs {
+export type ListNavigationItemOutputs = {
   readonly active: Signal<boolean>;
-}
+};
 
-export type ListNavigationSchema = StateSchema<
+export type ListNavigationStateSchema = StateSchema<
   ListNavigationInputs,
   ListNavigationItemInputs,
   ListNavigationOutputs,
   ListNavigationItemOutputs
 >;
 
-export type ListNavigationState = ParentStateType<ListNavigationSchema>;
+export type ListNavigationState = ParentStateType<ListNavigationStateSchema>;
 
-export type ListNavigationItemState = ItemStateType<ListNavigationSchema>;
+export type ListNavigationItemState = ItemStateType<ListNavigationStateSchema>;
 
-const schema: ListNavigationSchema = {
+const schema: ListNavigationStateSchema = {
   computations: {
     activatedElement: writable(({ inputValue }) => inputValue()),
     activeIndex: ({ self, items }) => {
@@ -46,7 +46,7 @@ const schema: ListNavigationSchema = {
   },
 };
 
-export const listNavigationSchema = () => schema;
+export const listNavigationStateSchema = () => schema;
 
 export function getNextIndex(
   list: ListNavigationState,

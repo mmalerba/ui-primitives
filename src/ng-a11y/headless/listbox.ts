@@ -2,33 +2,24 @@ import {
   computed,
   contentChildren,
   Directive,
-  effect,
   ElementRef,
   inject,
   input,
   Signal,
 } from '@angular/core';
-import { createState } from '../primitives/base/state';
-import { ListboxController } from '../primitives/composables/listbox/listbox-controller';
+import { createState } from '../../primitives/base/state';
 import {
   ListboxOptionInputs,
   ListboxOptionState,
-  listboxSchema,
   ListboxState,
-} from '../primitives/composables/listbox/listbox-state';
+  listboxStateSchema,
+} from '../../primitives/composables/listbox/listbox-state';
+import { BindListboxOptionState, BindListboxState } from '../bindings/listbox';
 
 @Directive({
   selector: '[listbox]',
-  standalone: true,
-  host: {
-    '[attr.aria-activedescendant]': 'state.activeDescendantId()',
-    '[attr.disabled]': 'state.compositeDisabled() || null',
-    '[attr.tabindex]': 'state.tabindex()',
-    '(click)': 'listboxController.handlers.click($event)',
-    '(keydown)': 'listboxController.handlers.keydown($event)',
-    '(focusout)': 'listboxController.handlers.focusout($event)',
-  },
   exportAs: 'listbox',
+  hostDirectives: [BindListboxState],
 })
 export class ListboxDirective {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -47,28 +38,17 @@ export class ListboxDirective {
   readonly items = contentChildren(ListboxOptionDirective);
 
   readonly state: ListboxState<number>;
-  readonly itemStates: Signal<readonly ListboxOptionState<number>[]>;
   readonly itemStatesMap: Signal<Map<ListboxOptionInputs<number>, ListboxOptionState<number>>>;
-  readonly listboxController: ListboxController;
 
   constructor() {
-    const { parentState, itemStatesMap, itemStates, syncFns } = createState(
-      listboxSchema<number>(),
-      this,
-      this.items,
-    );
-    this.state = parentState;
-    this.itemStatesMap = itemStatesMap;
-    this.itemStates = itemStates;
-    this.listboxController = new ListboxController(
-      parentState,
-      itemStates,
-      computed(() => ({ wrapNavigation: this.wrapNavigation() })),
-    );
+    const instanceState = createState(listboxStateSchema<number>(), this, this.items);
 
-    for (const fn of syncFns) {
-      effect(fn);
-    }
+    this.state = instanceState.parentState;
+    this.itemStatesMap = instanceState.itemStatesMap;
+
+    const options = computed(() => ({ wrapNavigation: this.wrapNavigation() }));
+
+    BindListboxState.bindHost({ ...instanceState, options });
   }
 }
 
@@ -76,15 +56,8 @@ let nextId = 0;
 
 @Directive({
   selector: '[listboxOption]',
-  standalone: true,
-  host: {
-    '[attr.aria-selected]': 'state().selected()',
-    '[attr.disabled]': 'state().compositeDisabled() || null',
-    '[attr.id]': 'state().id()',
-    '[attr.tabindex]': 'state().tabindex()',
-    '[class.active]': 'state().active()',
-  },
   exportAs: 'listboxOption',
+  hostDirectives: [BindListboxOptionState],
 })
 export class ListboxOptionDirective {
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -93,5 +66,9 @@ export class ListboxOptionDirective {
   readonly id = computed(() => `listbox-option-${nextId++}`);
   readonly value = computed(() => this.parent.items().indexOf(this));
 
-  readonly state = computed(() => this.parent.itemStatesMap().get(this));
+  readonly state = computed(() => this.parent.itemStatesMap().get(this)!);
+
+  constructor() {
+    BindListboxOptionState.bindHost({ state: this.state });
+  }
 }

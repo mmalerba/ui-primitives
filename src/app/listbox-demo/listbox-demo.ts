@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
-import { ListboxDirective, ListboxOptionDirective } from '../../ng-a11y/listbox';
+import { ListboxDirective, ListboxOptionDirective } from '../../ng-a11y/headless/listbox';
 import { DemoControls } from '../demo-controls/demo-controls';
 
 let nextId = 10;

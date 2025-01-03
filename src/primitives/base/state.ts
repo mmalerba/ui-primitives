@@ -130,13 +130,20 @@ export type ParentStateType<T extends StateSchema<any, any, any, any>> =
 export type ItemStateType<T extends StateSchema<any, any, any, any>> =
   T extends StateSchema<any, infer II, any, infer IO> ? II & IO : never;
 
-export function createState<PI extends State, II extends State, PO extends State, IO extends State>(
-  schema: StateSchema<PI, II, PO, IO>,
-  parentInputs: PI,
-  itemsInputs: Signal<readonly II[]>,
-) {
+export type InstanceState<S extends StateSchema<any, any, any, any>> = {
+  parentState: ParentStateType<S>;
+  itemStatesMap: Signal<Map<ItemInputType<S>, ItemStateType<S>>>;
+  itemStates: Signal<readonly ItemStateType<S>[]>;
+  syncFns: (() => void)[];
+};
+
+export function createState<S extends StateSchema<any, any, any, any>>(
+  schema: S,
+  parentInputs: ParentInputType<S>,
+  itemsInputs: Signal<readonly ItemInputType<S>[]>,
+): InstanceState<S> {
   // Create the parent state
-  const parentState: PI & PO = { ...parentInputs };
+  const parentState = { ...parentInputs } as ParentStateType<S>;
   for (const [property, computation] of Object.entries(schema.computations ?? {})) {
     if (!computation) {
       continue;
@@ -157,8 +164,8 @@ export function createState<PI extends State, II extends State, PO extends State
   // Create a map of child inputs to child state. This allows us to maintain the same set of state
   // for a child even as it moves around in the list of items.
   const itemStatesMap = linkedSignal<
-    readonly II[],
-    Map<II, II & IO & { [INDEX]: WritableSignal<number> }>
+    readonly ItemInputType<S>[],
+    Map<ItemInputType<S>, ItemStateType<S> & { [INDEX]: WritableSignal<number> }>
   >({
     source: itemsInputs,
     computation: (newItemsInputs, previous) => {
@@ -185,10 +192,10 @@ export function createState<PI extends State, II extends State, PO extends State
             return [itemInputs, previousItemStates.get(itemInputs)!] as const;
           }
           // For new ones, create a new state for them.
-          const itemState: II & IO & { [INDEX]: WritableSignal<number> } = {
+          const itemState = {
             ...itemInputs,
             [INDEX]: signal(idx),
-          };
+          } as ItemStateType<S> & { [INDEX]: WritableSignal<number> };
           for (const [property, computation] of Object.entries(schema.itemComputations ?? {})) {
             if (!computation) {
               continue;

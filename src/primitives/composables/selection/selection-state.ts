@@ -1,43 +1,43 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
-export interface SelectionInputs<T> {
+export type SelectionInputs<T> = {
   readonly activeIndex: Signal<number>;
   readonly selectedValues: Signal<Set<T>>;
   readonly selectionType: Signal<'single' | 'multiple'>;
   readonly selectionStrategy: Signal<'followfocus' | 'explicit'>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export interface SelectionOptionInputs<T> {
+export type SelectionOptionInputs<T> = {
   readonly element: HTMLElement;
   readonly value: Signal<T>;
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export interface SelectionOutputs<T> {
+export type SelectionOutputs<T> = {
   readonly selectedValues: WritableSignal<Set<T>>;
   readonly selectedIndices: Signal<readonly number[]>;
   readonly lastSelectedIndex: WritableSignal<number>;
-}
+};
 
-export interface SelectionOptionOutputs {
+export type SelectionOptionOutputs = {
   readonly selected: Signal<boolean>;
-}
+};
 
-export type SelectionSchema<T> = StateSchema<
+export type SelectionStateSchema<T> = StateSchema<
   SelectionInputs<T>,
   SelectionOptionInputs<T>,
   SelectionOutputs<T>,
   SelectionOptionOutputs
 >;
 
-export type SelectionState<T> = ParentStateType<SelectionSchema<T>>;
+export type SelectionState<T> = ParentStateType<SelectionStateSchema<T>>;
 
-export type SelectionOptionState<T> = ItemStateType<SelectionSchema<T>>;
+export type SelectionOptionState<T> = ItemStateType<SelectionStateSchema<T>>;
 
-const schema: SelectionSchema<unknown> = {
+const schema: SelectionStateSchema<unknown> = {
   computations: {
     selectedValues: writable(({ inputValue }) => inputValue()),
     selectedIndices: ({ self, items }) =>
@@ -54,8 +54,8 @@ const schema: SelectionSchema<unknown> = {
   },
 };
 
-export function selectionSchema<T>(): SelectionSchema<T> {
-  return schema as SelectionSchema<T>;
+export function selectionStateSchema<T>(): SelectionStateSchema<T> {
+  return schema as SelectionStateSchema<T>;
 }
 
 export function containsValue<T>(

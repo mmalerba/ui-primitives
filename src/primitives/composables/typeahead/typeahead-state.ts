@@ -1,38 +1,38 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
-export interface TypeaheadInputs {
+export type TypeaheadInputs = {
   readonly activatedElement: Signal<HTMLElement | null>;
-}
+};
 
-export interface TypeaheadItemInputs {
+export type TypeaheadItemInputs = {
   readonly element: HTMLElement;
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export interface TypeaheadOutputs {
+export type TypeaheadOutputs = {
   readonly activatedElement: WritableSignal<Element | null>;
-}
+};
 
 export type TypeaheadItemOutputs = {};
 
-export type TypeaheadSchema = StateSchema<
+export type TypeaheadStateSchema = StateSchema<
   TypeaheadInputs,
   TypeaheadItemInputs,
   TypeaheadOutputs,
   TypeaheadItemOutputs
 >;
 
-export type TypeaheadState = ParentStateType<TypeaheadSchema>;
+export type TypeaheadState = ParentStateType<TypeaheadStateSchema>;
 
-export type TypeaheadItemState = ItemStateType<TypeaheadSchema>;
+export type TypeaheadItemState = ItemStateType<TypeaheadStateSchema>;
 
-const schema: TypeaheadSchema = {
+const schema: TypeaheadStateSchema = {
   computations: {
     activatedElement: writable(({ inputValue }) => inputValue()),
   },
 };
 
-export function typeaheadSchema(): TypeaheadSchema {
+export function typeaheadStateSchema(): TypeaheadStateSchema {
   return schema;
 }

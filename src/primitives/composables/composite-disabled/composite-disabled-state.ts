@@ -1,34 +1,34 @@
 import { Signal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema } from '../../base/state';
 
-export interface CompositeDisabledInputs {
+export type CompositeDisabledInputs = {
   readonly disabled: Signal<boolean>;
-}
+};
 
-export interface CompositeDisabledItemInputs {
+export type CompositeDisabledItemInputs = {
   readonly disabled: Signal<boolean>;
-}
+};
 
-export interface CompositeDisabledOutputs {
+export type CompositeDisabledOutputs = {
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export interface CompositeDisabledItemOutputs {
+export type CompositeDisabledItemOutputs = {
   readonly compositeDisabled: Signal<boolean>;
-}
+};
 
-export type CompositeDisabledSchema = StateSchema<
+export type CompositeDisabledStateSchema = StateSchema<
   CompositeDisabledInputs,
   CompositeDisabledItemInputs,
   CompositeDisabledOutputs,
   CompositeDisabledItemOutputs
 >;
 
-export type CompositeDisabledState = ParentStateType<CompositeDisabledSchema>;
+export type CompositeDisabledState = ParentStateType<CompositeDisabledStateSchema>;
 
-export type CompositeDisabledItemState = ItemStateType<CompositeDisabledSchema>;
+export type CompositeDisabledItemState = ItemStateType<CompositeDisabledStateSchema>;
 
-const schema: CompositeDisabledSchema = {
+const schema: CompositeDisabledStateSchema = {
   computations: {
     compositeDisabled: ({ self, items }) =>
       self.disabled() || items().every((item) => item.disabled()),
@@ -38,4 +38,4 @@ const schema: CompositeDisabledSchema = {
   },
 };
 
-export const compositeDisabledSchema = () => schema;
+export const compositeDisabledStateSchema = () => schema;
