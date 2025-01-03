@@ -20,6 +20,11 @@ export interface MouseEventHandlerConfig extends EventHandlerConfig<MouseEvent> 
 export class MouseEventManager extends EventManager<MouseEvent> {
   override configs: MouseEventHandlerConfig[] = [];
 
+  protected override defaultHandlerOptions: EventHandlerOptions = {
+    preventDefault: true,
+    stopPropagation: true,
+  };
+
   on(
     modifiers: number | number[],
     button: MouseButton,

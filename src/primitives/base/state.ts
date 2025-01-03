@@ -69,12 +69,12 @@ export type StateSchema<
   PO extends State,
   IO extends State,
 > = (PO extends Record<PropertyKey, never>
-  ? { computations?: never }
+  ? { computations?: Record<PropertyKey, never> }
   : {
       computations: StateComputations<ParentComputationArgs<PI, II, PO, IO>, PI, PO>;
     }) &
   (IO extends Record<PropertyKey, never>
-    ? { itemComputations?: never }
+    ? { itemComputations?: Record<PropertyKey, never> }
     : {
         itemComputations: StateComputations<ItemComputationArgs<PI, II, PO, IO>, II, IO>;
       }) & {
@@ -278,10 +278,11 @@ function composeComputationFunctions(
   if (!fns.length) {
     return undefined;
   }
-  let fn = fns.shift()!;
-  let fn2: typeof fn | undefined;
-  while ((fn2 = fns.shift())) {
-    fn = (args) => fn2!({ ...args, inputValue: () => fn(args) });
+  let fn = fns[0]!;
+  for (let i = 1; i < fns.length; i++) {
+    const prevFn = fn;
+    const nextFn = fns[i];
+    fn = (args) => nextFn({ ...args, inputValue: () => prevFn(args) });
   }
   if (fns.some((f) => (f as any)[WRITABLE])) {
     (fn as any)[WRITABLE] = true;

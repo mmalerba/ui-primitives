@@ -14,6 +14,11 @@ export interface KeyboardEventHandlerConfig extends EventHandlerConfig<KeyboardE
 export class KeyboardEventManager extends EventManager<KeyboardEvent> {
   override configs: KeyboardEventHandlerConfig[] = [];
 
+  protected override defaultHandlerOptions: EventHandlerOptions = {
+    preventDefault: true,
+    stopPropagation: true,
+  };
+
   on(
     modifiers: number | number[],
     key: string | ((key: string) => boolean),

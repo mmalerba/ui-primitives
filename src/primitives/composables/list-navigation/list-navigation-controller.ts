@@ -11,8 +11,8 @@ import {
 } from './list-navigation-state';
 
 export interface ListNavigationControllerOptions {
-  afterNavigation?: () => void;
   keydownModifier: ModifierKey | ModifierKey[];
+  afterNavigation?: () => void;
 }
 
 const defaultOptions: ListNavigationControllerOptions = {
@@ -34,28 +34,28 @@ export class ListNavigationController implements Controller {
     const previousKey = this.list.orientation() === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
     const nextKey = this.list.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
     return new KeyboardEventManager()
-      .on(this.options.keydownModifier, previousKey, () => {
+      .on(this.options().keydownModifier, previousKey, () => {
         this.navigatePrevious();
       })
-      .on(this.options.keydownModifier, nextKey, () => {
+      .on(this.options().keydownModifier, nextKey, () => {
         this.navigateNext();
       })
-      .on(this.options.keydownModifier, 'Home', () => {
+      .on(this.options().keydownModifier, 'Home', () => {
         this.navigateFirst();
       })
-      .on(this.options.keydownModifier, 'End', () => {
+      .on(this.options().keydownModifier, 'End', () => {
         this.navigateLast();
       });
   });
 
-  private options: ListNavigationControllerOptions;
+  private options: Signal<ListNavigationControllerOptions>;
 
   constructor(
     private readonly list: ListNavigationState,
     private readonly items: Signal<readonly ListNavigationItemState[]>,
-    options: Partial<ListNavigationControllerOptions> = defaultOptions,
+    options?: Signal<Partial<ListNavigationControllerOptions>>,
   ) {
-    this.options = { ...defaultOptions, ...options };
+    this.options = computed(() => ({ ...defaultOptions, ...options?.() }));
   }
 
   navigateTo(index: number): void {
@@ -89,7 +89,7 @@ export class ListNavigationController implements Controller {
     const index = getIndex(this.items, initial, navigateFn);
     if (index !== -1) {
       this.list.activatedElement.set(this.items()[index].element);
-      this.options.afterNavigation?.();
+      this.options().afterNavigation?.();
     }
   }
 }

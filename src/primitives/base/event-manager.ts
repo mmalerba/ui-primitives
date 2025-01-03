@@ -28,12 +28,14 @@ export abstract class EventManager<T extends Event> {
 
   protected configs: EventHandlerConfig<T>[] = [];
 
-  protected defaultHandlerOptions: EventHandlerOptions;
+  protected defaultHandlerOptions: EventHandlerOptions = {
+    preventDefault: false,
+    stopPropagation: false,
+  };
 
   constructor(defaultHandlerOptions?: Partial<EventHandlerOptions>) {
     this.defaultHandlerOptions = {
-      preventDefault: false,
-      stopPropagation: false,
+      ...this.defaultHandlerOptions,
       ...defaultHandlerOptions,
     };
   }

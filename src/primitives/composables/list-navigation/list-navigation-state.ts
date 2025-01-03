@@ -2,7 +2,7 @@ import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
 export interface ListNavigationInputs {
-  readonly wrapNavigation: Signal<boolean>;
+  readonly wrapNavigation: Signal<boolean>; // TODO: controller option?
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<'horizontal' | 'vertical'>;
 }

@@ -11,6 +11,7 @@ import { compositeDisabledSchema } from '../composite-disabled/composite-disable
 import { compositeFocusSchema } from '../composite-focus/composite-focus-state';
 import { listNavigationSchema } from '../list-navigation/list-navigation-state';
 import { selectionSchema } from '../selection/selection-state';
+import { typeaheadSchema } from '../typeahead/typeahead-state';
 
 export type ListboxSchema<T> = ReturnType<typeof listboxSchema<T>>;
 
@@ -30,7 +31,10 @@ export function listboxSchema<T>() {
   return composeSchema(
     composeSchema(
       compositeDisabledSchema(),
-      composeSchema(listNavigationSchema(), compositeFocusSchema()),
+      composeSchema(
+        composeSchema(listNavigationSchema(), typeaheadSchema()),
+        compositeFocusSchema(),
+      ),
     ),
     selectionSchema<T>(),
   );
