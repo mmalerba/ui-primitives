@@ -64,7 +64,7 @@ export class SelectionController implements Controller {
 
   constructor(
     private readonly parent: SelectionState<any>,
-    private readonly options: Signal<readonly SelectionOptionState<any>[]>,
+    private readonly items: Signal<readonly SelectionOptionState<any>[]>,
   ) {}
 
   select(index: number) {
@@ -80,20 +80,20 @@ export class SelectionController implements Controller {
   }
 
   toggle(index: number) {
-    this.options()[index]?.selected() ? this.deselect(index) : this.select(index);
+    this.items()[index]?.selected() ? this.deselect(index) : this.select(index);
   }
 
   selectAll() {
-    this.selectRange(0, this.options().length - 1);
+    this.selectRange(0, this.items().length - 1);
     this.parent.lastSelectedIndex.set(-1);
   }
 
   deselectAll() {
-    this.deselectRange(0, this.options().length - 1);
+    this.deselectRange(0, this.items().length - 1);
   }
 
   toggleAll() {
-    if (this.parent.selectedIndices().length === this.options().length) {
+    if (this.parent.selectedIndices().length === this.items().length) {
       this.deselectAll();
     } else {
       this.selectAll();
@@ -114,11 +114,11 @@ export class SelectionController implements Controller {
     const lower = Math.min(fromIndex, toIndex);
     const upper = Math.max(fromIndex, toIndex);
     let newValues = new Set(this.parent.selectedValues());
-    for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.options().length - 1); idx++) {
-      if (this.options()[idx].compositeDisabled() || this.options()[idx].selected()) {
+    for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.items().length - 1); idx++) {
+      if (this.items()[idx].compositeDisabled() || this.items()[idx].selected()) {
         continue;
       }
-      newValues.add(this.options()[idx].value());
+      newValues.add(this.items()[idx].value());
       this.parent.lastSelectedIndex.set(idx);
     }
     if (newValues.size !== this.parent.selectedValues().size) {
@@ -133,11 +133,11 @@ export class SelectionController implements Controller {
     const lower = Math.min(fromIndex, toIndex);
     const upper = Math.max(fromIndex, toIndex);
     let newValues: Set<unknown> = new Set(this.parent.selectedValues());
-    for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.options().length - 1); idx++) {
-      if (this.options()[idx].compositeDisabled() || !this.options()[idx].selected()) {
+    for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.items().length - 1); idx++) {
+      if (this.items()[idx].compositeDisabled() || !this.items()[idx].selected()) {
         continue;
       }
-      newValues.delete(this.options()[idx].value());
+      newValues.delete(this.items()[idx].value());
     }
     if (newValues.size !== this.parent.selectedValues().size) {
       this.parent.selectedValues.set(newValues);
@@ -145,18 +145,18 @@ export class SelectionController implements Controller {
   }
 
   setSingleSelection(index: number) {
-    if (!this.isIndexSelectable(index) || this.options()[index].selected()) {
+    if (!this.isIndexSelectable(index) || this.items()[index].selected()) {
       return;
     }
-    this.parent.selectedValues.set(new Set([this.options()[index].value()]));
+    this.parent.selectedValues.set(new Set([this.items()[index].value()]));
     this.parent.lastSelectedIndex.set(index);
   }
 
   private isIndexSelectable(index: number) {
-    return this.options()[index] && !this.options()[index].compositeDisabled();
+    return this.items()[index] && !this.items()[index].compositeDisabled();
   }
 
   private getTargetIndex(event: MouseEvent) {
-    return this.options().findIndex((option) => option.element.contains(event.target as Node));
+    return this.items().findIndex((option) => option.element.contains(event.target as Node));
   }
 }

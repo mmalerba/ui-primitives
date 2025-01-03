@@ -12,11 +12,13 @@ import {
 
 export interface ListNavigationControllerOptions {
   keydownModifier: ModifierKey | ModifierKey[];
+  wrap: boolean;
   afterNavigation?: () => void;
 }
 
 const defaultOptions: ListNavigationControllerOptions = {
   keydownModifier: ModifierKey.None,
+  wrap: false,
 };
 
 export class ListNavigationController implements Controller {
@@ -80,10 +82,11 @@ export class ListNavigationController implements Controller {
 
   private getPreviousIndex = (index: number) => {
     index = index === -1 ? this.items().length : index;
-    return this.list.wrapNavigation() && index === 0 ? this.items().length - 1 : index - 1;
+    return this.options().wrap && index === 0 ? this.items().length - 1 : index - 1;
   };
 
-  private getNextIndex = (index: number) => getNextIndex(this.list, this.items, index);
+  private getNextIndex = (index: number) =>
+    getNextIndex(this.list, this.items, index, this.options().wrap);
 
   private navigate(initial: number, navigateFn: (i: number) => number): void {
     const index = getIndex(this.items, initial, navigateFn);

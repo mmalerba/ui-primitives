@@ -2,7 +2,6 @@ import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
 export interface ListNavigationInputs {
-  readonly wrapNavigation: Signal<boolean>; // TODO: controller option?
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<'horizontal' | 'vertical'>;
 }
@@ -38,7 +37,7 @@ const schema: ListNavigationSchema = {
     activeIndex: ({ self, items }) => {
       const idx = items().findIndex((item) => item.element === self.activatedElement());
       return idx === -1 && items().length
-        ? getIndex(items, -1, (i) => getNextIndex(self, items, i))
+        ? getIndex(items, -1, (i) => getNextIndex(self, items, i, false))
         : idx;
     },
   },
@@ -53,8 +52,9 @@ export function getNextIndex(
   list: ListNavigationState,
   items: Signal<readonly ListNavigationItemState[]>,
   index: number,
+  wrap: boolean,
 ): number {
-  return list.wrapNavigation() && index === items().length - 1 ? 0 : index + 1;
+  return wrap && index === items().length - 1 ? 0 : index + 1;
 }
 
 export function getIndex(

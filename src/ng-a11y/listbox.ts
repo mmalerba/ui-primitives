@@ -60,7 +60,11 @@ export class ListboxDirective {
     this.state = parentState;
     this.itemStatesMap = itemStatesMap;
     this.itemStates = itemStates;
-    this.listboxController = new ListboxController(parentState, itemStates);
+    this.listboxController = new ListboxController(
+      parentState,
+      itemStates,
+      computed(() => ({ wrapNavigation: this.wrapNavigation() })),
+    );
 
     for (const fn of syncFns) {
       effect(fn);

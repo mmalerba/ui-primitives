@@ -8,6 +8,14 @@ import { SelectionController } from '../selection/selection-controller';
 import { TypeaheadController } from '../typeahead/typeahead-controller';
 import { ListboxOptionState, ListboxState } from './listbox-state';
 
+export class ListboxControllerOptions {
+  wrapNavigation = false;
+}
+
+const defaultOptions: ListboxControllerOptions = {
+  wrapNavigation: false,
+};
+
 export class ListboxController implements Controller {
   private focusController: CompositeFocusController;
   private navigationController: ListNavigationController;
@@ -15,33 +23,34 @@ export class ListboxController implements Controller {
   private typeaheadController: TypeaheadController;
 
   private afterNavigation = computed(() => {
-    if (this.listbox.selectionStrategy() !== 'followfocus') {
+    if (this.parent.selectionStrategy() !== 'followfocus') {
       return undefined;
     }
-    if (this.listbox.selectionType() === 'single') {
+    if (this.parent.selectionType() === 'single') {
       return () => {
-        this.selectionController.select(this.listbox.activeIndex());
+        this.selectionController.select(this.parent.activeIndex());
       };
     } else {
       return () => {
         this.selectionController.deselectAll();
-        this.selectionController.select(this.listbox.activeIndex());
+        this.selectionController.select(this.parent.activeIndex());
       };
     }
   });
 
   private shiftNavigationKeydownManager = computed(() => {
-    if (this.listbox.selectionType() !== 'multiple') {
+    if (this.parent.selectionType() !== 'multiple') {
       return undefined;
     }
     return new ListNavigationController(
-      this.listbox,
-      this.options,
+      this.parent,
+      this.items,
       computed(() => ({
         keydownModifier: ModifierKey.Shift,
         afterNavigation: () => {
-          this.selectionController.toggle(this.listbox.activeIndex());
+          this.selectionController.toggle(this.parent.activeIndex());
         },
+        wrap: this.options().wrapNavigation,
       })),
     )
       .keydownManager()
@@ -53,13 +62,16 @@ export class ListboxController implements Controller {
 
   private ctrlNavigationKeydownManager = computed(() => {
     if (
-      this.listbox.selectionType() === 'multiple' &&
-      this.listbox.selectionStrategy() === 'explicit'
+      this.parent.selectionType() === 'multiple' &&
+      this.parent.selectionStrategy() === 'explicit'
     ) {
       return new ListNavigationController(
-        this.listbox,
-        this.options,
-        computed(() => ({ keydownModifier: ModifierKey.Ctrl })),
+        this.parent,
+        this.items,
+        computed(() => ({
+          keydownModifier: ModifierKey.Ctrl,
+          wrap: this.options().wrapNavigation,
+        })),
       )
         .keydownManager()
         .override(
@@ -71,16 +83,16 @@ export class ListboxController implements Controller {
   });
 
   private ctrlShiftNavigationKeydownManager = computed(() => {
-    if (this.listbox.selectionType() !== 'multiple') {
+    if (this.parent.selectionType() !== 'multiple') {
       return undefined;
     }
     return new KeyboardEventManager()
       .on(ModifierKey.Ctrl | ModifierKey.Shift, 'Home', () => {
-        this.selectionController.selectRange(this.listbox.activeIndex(), 0);
+        this.selectionController.selectRange(this.parent.activeIndex(), 0);
         this.navigationController.navigateFirst();
       })
       .on(ModifierKey.Ctrl | ModifierKey.Shift, 'End', () => {
-        this.selectionController.selectRange(this.listbox.activeIndex(), this.options().length - 1);
+        this.selectionController.selectRange(this.parent.activeIndex(), this.items().length - 1);
         this.navigationController.navigateLast();
       });
   });
@@ -118,24 +130,29 @@ export class ListboxController implements Controller {
 
   readonly focusoutManager: GenericEventManager<FocusEvent>;
 
+  private options: Signal<ListboxControllerOptions>;
+
   constructor(
-    private readonly listbox: ListboxState<any>,
-    private readonly options: Signal<readonly ListboxOptionState<any>[]>,
+    private readonly parent: ListboxState<any>,
+    private readonly items: Signal<readonly ListboxOptionState<any>[]>,
+    options?: Signal<Partial<ListboxControllerOptions>>,
   ) {
-    this.focusController = new CompositeFocusController(listbox, options);
-    this.selectionController = new SelectionController(listbox, options);
+    this.options = computed(() => ({ ...defaultOptions, ...options?.() }));
+    this.focusController = new CompositeFocusController(parent, items);
+    this.selectionController = new SelectionController(parent, items);
     this.typeaheadController = new TypeaheadController(
-      listbox,
-      options,
+      parent,
+      items,
       computed(() => ({
         afterNavigation: this.afterNavigation(),
       })),
     );
     this.navigationController = new ListNavigationController(
-      listbox,
-      options,
+      parent,
+      items,
       computed(() => ({
         afterNavigation: this.afterNavigation(),
+        wrap: this.options().wrapNavigation,
       })),
     );
     this.focusoutManager = this.focusController.focusutManager;
