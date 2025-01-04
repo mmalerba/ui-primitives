@@ -147,7 +147,7 @@ export type ItemStateType<T extends StateSchema<any, any, any, any>> =
 /**
  * The full instance state for the parent and items, created from a its StateSchema.
  */
-export type InstanceState<S extends StateSchema<any, any, any, any>> = {
+export type InstanceState<S extends StateSchema<any, any, any, any>, ID = unknown> = {
   /**
    * The parent's full state.
    */
@@ -155,7 +155,7 @@ export type InstanceState<S extends StateSchema<any, any, any, any>> = {
   /**
    * A map of item input states to that item's full state.
    */
-  itemStatesMap: Signal<Map<ItemInputType<S>, ItemStateType<S>>>;
+  itemStatesMap: Signal<Map<ID, ItemStateType<S>>>;
   /**
    * A list of full item states.
    */
@@ -169,11 +169,28 @@ export type InstanceState<S extends StateSchema<any, any, any, any>> = {
 /**
  * Creates the instance state for the given schema and inputs.
  */
+export function createState<
+  S extends StateSchema<any, any, any, any>,
+  PI extends ParentInputType<S>,
+  II extends ItemInputType<S>,
+>(schema: S, parentInputs: PI, itemsInputs: Signal<readonly II[]>): InstanceState<S, II>;
+export function createState<
+  S extends StateSchema<any, any, any, any>,
+  PI extends ParentInputType<S>,
+  II extends ItemInputType<S>,
+  ID,
+>(
+  schema: S,
+  parentInputs: PI,
+  itemsInputs: Signal<readonly II[]>,
+  itemInputIdentity: (item: II) => ID,
+): InstanceState<S, ID>;
 export function createState<S extends StateSchema<any, any, any, any>>(
   schema: S,
   parentInputs: ParentInputType<S>,
   itemsInputs: Signal<readonly ItemInputType<S>[]>,
-): InstanceState<S> {
+  itemInputIdentity = (item: ItemInputType<S>) => item,
+): InstanceState<S, unknown> {
   // Create the parent state
   const parentState = { ...parentInputs } as ParentStateType<S>;
   for (const [property, computation] of Object.entries(schema.computations.parent ?? {})) {
@@ -207,21 +224,24 @@ export function createState<S extends StateSchema<any, any, any, any>>(
       if (
         previousItemStates &&
         newItemsInputs.length === previousItemStates.size &&
-        newItemsInputs.every((itemInputs) => previousItemStates.has(itemInputs))
+        newItemsInputs.every((itemInputs) => previousItemStates.has(itemInputIdentity(itemInputs)))
       ) {
         for (let idx = 0; idx < newItemsInputs.length; idx++) {
-          untracked(() => previousItemStates.get(newItemsInputs[idx])![INDEX].set(idx));
+          untracked(() =>
+            previousItemStates.get(itemInputIdentity(newItemsInputs[idx]))![INDEX].set(idx),
+          );
         }
         return previousItemStates;
       }
       // Otherwise we need to create a new map.
       return new Map(
         newItemsInputs.map((itemInputs, idx) => {
+          const ident = itemInputIdentity(itemInputs);
           // For items that exist in the previous map, reuse the same state, but again update
           // their index.
-          if (previousItemStates?.has(itemInputs)) {
-            untracked(() => previousItemStates.get(itemInputs)![INDEX].set(idx));
-            return [itemInputs, previousItemStates.get(itemInputs)!] as const;
+          if (previousItemStates?.has(ident)) {
+            untracked(() => previousItemStates.get(ident)![INDEX].set(idx));
+            return [ident, previousItemStates.get(ident)!] as const;
           }
           // For new ones, create a new state for them.
           const itemState = {
@@ -245,14 +265,16 @@ export function createState<S extends StateSchema<any, any, any, any>>(
               (itemState as Record<string, unknown>)[property] = linkedSignal(itemState[property]);
             }
           }
-          return [itemInputs, itemState] as const;
+          return [ident, itemState] as const;
         }),
       );
     },
   });
 
   // Create a list of the item states
-  const itemStates = computed(() => itemsInputs().map((v) => itemStatesMap().get(v)!));
+  const itemStates = computed(() =>
+    itemsInputs().map((i) => itemStatesMap().get(itemInputIdentity(i))!),
+  );
 
   // Create a list of all the sync functions.
   const syncFns =
