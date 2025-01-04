@@ -33,16 +33,18 @@ export type ListNavigationItemState = ItemStateType<ListNavigationStateSchema>;
 
 const schema: ListNavigationStateSchema = {
   computations: {
-    activatedElement: writable(({ inputValue }) => inputValue()),
-    activeIndex: ({ self, items }) => {
-      const idx = items().findIndex((item) => item.element === self.activatedElement());
-      return idx === -1 && items().length
-        ? getIndex(items, -1, (i) => getNextIndex(self, items, i, false))
-        : idx;
+    parent: {
+      activatedElement: writable(({ inputValue }) => inputValue()),
+      activeIndex: ({ self, items }) => {
+        const idx = items().findIndex((item) => item.element === self.activatedElement());
+        return idx === -1 && items().length
+          ? getIndex(items, -1, (i) => getNextIndex(self, items, i, false))
+          : idx;
+      },
     },
-  },
-  itemComputations: {
-    active: ({ parent, index }) => parent.activeIndex() === index(),
+    item: {
+      active: ({ parent, index }) => parent.activeIndex() === index(),
+    },
   },
 };
 

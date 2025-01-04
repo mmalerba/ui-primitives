@@ -39,18 +39,20 @@ export type SelectionOptionState<T> = ItemStateType<SelectionStateSchema<T>>;
 
 const schema: SelectionStateSchema<unknown> = {
   computations: {
-    selectedValues: writable(({ inputValue }) => inputValue()),
-    selectedIndices: ({ self, items }) =>
-      items().reduce<number[]>((acc, item, idx) => {
-        if (containsValue(self.selectedValues(), item.value(), self.compareValues())) {
-          acc.push(idx);
-        }
-        return acc;
-      }, []),
-    lastSelectedIndex: writable(() => -1),
-  },
-  itemComputations: {
-    selected: ({ parent, index }) => parent.selectedIndices().includes(index()),
+    parent: {
+      selectedValues: writable(({ inputValue }) => inputValue()),
+      selectedIndices: ({ self, items }) =>
+        items().reduce<number[]>((acc, item, idx) => {
+          if (containsValue(self.selectedValues(), item.value(), self.compareValues())) {
+            acc.push(idx);
+          }
+          return acc;
+        }, []),
+      lastSelectedIndex: writable(() => -1),
+    },
+    item: {
+      selected: ({ parent, index }) => parent.selectedIndices().includes(index()),
+    },
   },
 };
 

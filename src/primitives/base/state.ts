@@ -27,7 +27,13 @@ export type UnwrapSignal<T> = T extends Signal<infer U> ? U : T;
  * Arguments passed to a parent state computation function.
  */
 export type ParentComputationArgs<PI, II, PO, IO> = {
+  /**
+   * The parent's state after computations are applied.
+   */
   self: PI & PO;
+  /**
+   * The state of all items after computations are applied.
+   */
   items: Signal<readonly (II & IO)[]>;
 };
 
@@ -35,8 +41,17 @@ export type ParentComputationArgs<PI, II, PO, IO> = {
  * Arguments passed to an item state computation function.
  */
 export type ItemComputationArgs<PI, II, PO, IO> = {
+  /**
+   * The item's state after computations are applied.
+   */
   self: II & IO;
+  /**
+   * The parent's state after computations are applied.
+   */
   parent: PI & PO;
+  /**
+   * The index of the item in the parent.
+   */
   index: Signal<number>;
 };
 
@@ -63,23 +78,22 @@ export type StateComputations<A extends Record<string, any>, I extends State, O 
  * parent element and associated items. It may additionally define synchronization logic needed for
  * this state (for exmaple focusing an element programatically when it becomes active).
  */
-export type StateSchema<
-  PI extends State,
-  II extends State,
-  PO extends State,
-  IO extends State,
-> = (PO extends Record<PropertyKey, never>
-  ? { computations?: Record<PropertyKey, never> }
-  : {
-      computations: StateComputations<ParentComputationArgs<PI, II, PO, IO>, PI, PO>;
-    }) &
-  (IO extends Record<PropertyKey, never>
-    ? { itemComputations?: Record<PropertyKey, never> }
-    : {
-        itemComputations: StateComputations<ItemComputationArgs<PI, II, PO, IO>, II, IO>;
-      }) & {
-    sync?: ((arg: { parent: PI & PO; items: Signal<readonly (II & IO)[]> }) => void)[];
-  };
+export type StateSchema<PI extends State, II extends State, PO extends State, IO extends State> = {
+  /**
+   * The set of computations that produces the output state for the parent and items.
+   */
+  computations: (PO extends Record<PropertyKey, never>
+    ? { parent?: Record<PropertyKey, never> }
+    : { parent: StateComputations<ParentComputationArgs<PI, II, PO, IO>, PI, PO> }) &
+    (IO extends Record<PropertyKey, never>
+      ? { item?: Record<PropertyKey, never> }
+      : { item: StateComputations<ItemComputationArgs<PI, II, PO, IO>, II, IO> });
+  /**
+   * A list of functions used to synchronize the state with the DOM.
+   * (e.g. to call `.focus()` on an element)
+   */
+  sync?: ((arg: { parent: PI & PO; items: Signal<readonly (II & IO)[]> }) => void)[];
+};
 
 /**
  * Defines a state schema based on composing two other state schemas.
@@ -130,13 +144,31 @@ export type ParentStateType<T extends StateSchema<any, any, any, any>> =
 export type ItemStateType<T extends StateSchema<any, any, any, any>> =
   T extends StateSchema<any, infer II, any, infer IO> ? II & IO : never;
 
+/**
+ * The full instance state for the parent and items, created from a its StateSchema.
+ */
 export type InstanceState<S extends StateSchema<any, any, any, any>> = {
+  /**
+   * The parent's full state.
+   */
   parentState: ParentStateType<S>;
+  /**
+   * A map of item input states to that item's full state.
+   */
   itemStatesMap: Signal<Map<ItemInputType<S>, ItemStateType<S>>>;
+  /**
+   * A list of full item states.
+   */
   itemStates: Signal<readonly ItemStateType<S>[]>;
+  /**
+   * A list of functions used to synchronize the state with the DOM.
+   */
   syncFns: (() => void)[];
 };
 
+/**
+ * Creates the instance state for the given schema and inputs.
+ */
 export function createState<S extends StateSchema<any, any, any, any>>(
   schema: S,
   parentInputs: ParentInputType<S>,
@@ -144,7 +176,7 @@ export function createState<S extends StateSchema<any, any, any, any>>(
 ): InstanceState<S> {
   // Create the parent state
   const parentState = { ...parentInputs } as ParentStateType<S>;
-  for (const [property, computation] of Object.entries(schema.computations ?? {})) {
+  for (const [property, computation] of Object.entries(schema.computations.parent ?? {})) {
     if (!computation) {
       continue;
     }
@@ -196,7 +228,7 @@ export function createState<S extends StateSchema<any, any, any, any>>(
             ...itemInputs,
             [INDEX]: signal(idx),
           } as ItemStateType<S> & { [INDEX]: WritableSignal<number> };
-          for (const [property, computation] of Object.entries(schema.itemComputations ?? {})) {
+          for (const [property, computation] of Object.entries(schema.computations.item ?? {})) {
             if (!computation) {
               continue;
             }
@@ -226,29 +258,46 @@ export function createState<S extends StateSchema<any, any, any, any>>(
   const syncFns =
     schema.sync?.map((fn) => () => fn({ parent: parentState, items: itemStates })) ?? [];
 
-  return { parentState, itemStatesMap, itemStates, syncFns } as const;
+  return { parentState, itemStatesMap, itemStates, syncFns };
 }
 
+/**
+ * Composes two state schemas into a single schema that combines their state.
+ *
+ * The input state for the new schema consists of the input properties for the first schema, plus
+ * any input properties for the second schema that are not provided by the first schema's output
+ * state.
+ *
+ * The output state for the new schema consists of all properties in the output state of both
+ * schemas.
+ *
+ * If both schemas define computations for the same property, the new schema will define a new
+ * computation by composing the functions, with the result of the first schema's computation being
+ * passed as the named `inputValue` argument to the second schema's computation function.
+ */
 export function composeSchema<
   S1 extends StateSchema<any, any, any, any>,
   S2 extends StateSchema<any, any, any, any>,
 >(s1: S1, s2: S2): ComposedStateSchema<S1, S2> {
-  const computations = composeComputations(
-    s1.computations as StateComputations<Record<string, unknown>, State, State>,
-    s2.computations as StateComputations<Record<string, unknown>, State, State>,
-  );
-  const itemComputations = composeComputations(
-    s1.itemComputations as StateComputations<Record<string, unknown>, State, State>,
-    s2.itemComputations as StateComputations<Record<string, unknown>, State, State>,
-  );
-  const sync = [...(s1.sync ?? []), ...(s2.sync ?? [])];
   return {
-    computations,
-    itemComputations,
-    sync,
+    computations: {
+      parent: composeComputations(
+        s1.computations.parent as StateComputations<Record<string, unknown>, State, State>,
+        s2.computations.parent as StateComputations<Record<string, unknown>, State, State>,
+      ),
+      item: composeComputations(
+        s1.computations.item as StateComputations<Record<string, unknown>, State, State>,
+        s2.computations.item as StateComputations<Record<string, unknown>, State, State>,
+      ),
+    },
+    sync: [...(s1.sync ?? []), ...(s2.sync ?? [])],
   } as ComposedStateSchema<S1, S2>;
 }
 
+/**
+ * Marks a schema computation function as writable, meaning it will be wrapped in a `linkedSignal`
+ * rather than a `computed` when building the final state.
+ */
 export function writable<T>(fn: T): T & { [WRITABLE]: true } {
   (fn as any)[WRITABLE] = true;
   return fn as any;

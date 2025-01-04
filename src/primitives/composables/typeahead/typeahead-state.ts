@@ -29,7 +29,9 @@ export type TypeaheadItemState = ItemStateType<TypeaheadStateSchema>;
 
 const schema: TypeaheadStateSchema = {
   computations: {
-    activatedElement: writable(({ inputValue }) => inputValue()),
+    parent: {
+      activatedElement: writable(({ inputValue }) => inputValue()),
+    },
   },
 };
 
