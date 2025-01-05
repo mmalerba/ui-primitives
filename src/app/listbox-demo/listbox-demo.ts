@@ -1,5 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
 import { ListboxDirective, ListboxOptionDirective } from '../../ng-a11y/headless/listbox';
+import { FocusStrategy } from '../../primitives/composables/composite-focus/composite-focus-state';
+import { Orientation } from '../../primitives/composables/list-navigation/list-navigation-state';
+import {
+  SelectionStrategy,
+  SelectionType,
+} from '../../primitives/composables/selection/selection-state';
 import { DemoControls } from '../demo-controls/demo-controls';
 
 let nextId = 10;
@@ -16,10 +22,10 @@ export class ListboxDemo {
 
   disabled = signal(false);
   disabledItems = signal(new Set<number>(), { equal: () => false });
-  focusStrategy = signal<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
-  orientation = signal<'horizontal' | 'vertical'>('vertical');
-  selectionType = signal<'single' | 'multiple'>('single');
-  selectionStrategy = signal<'followfocus' | 'explicit'>('followfocus');
+  focusStrategy = signal<FocusStrategy>('rovingtabindex');
+  orientation = signal<Orientation>('vertical');
+  selectionType = signal<SelectionType>('single');
+  selectionStrategy = signal<SelectionStrategy>('followfocus');
   wrapNavigation = signal(false);
 
   listbox = viewChild.required(ListboxDirective);
@@ -136,7 +142,7 @@ export class ListboxDemo {
       return 'l';
     }
     if (match?.[0] === 'a') {
-      return this.listbox().state.activeIndex();
+      return this.listbox().listboxState.parentState.activeIndex();
     }
     return match ? Math.min(this.items().length - 1, Number(match?.[0])) : undefined;
   }

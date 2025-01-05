@@ -1,11 +1,15 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
+export type SelectionType = 'single' | 'multiple';
+
+export type SelectionStrategy = 'followfocus' | 'explicit';
+
 export type SelectionInputs<T> = {
   readonly activeIndex: Signal<number>;
   readonly selectedValues: Signal<Set<T>>;
-  readonly selectionType: Signal<'single' | 'multiple'>;
-  readonly selectionStrategy: Signal<'followfocus' | 'explicit'>;
+  readonly selectionType: Signal<SelectionType>;
+  readonly selectionStrategy: Signal<SelectionStrategy>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
   readonly disabled: Signal<boolean>;
 };

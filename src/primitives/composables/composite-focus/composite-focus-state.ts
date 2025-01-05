@@ -1,10 +1,12 @@
 import { Signal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema } from '../../base/state';
 
+export type FocusStrategy = 'activedescendant' | 'rovingtabindex';
+
 export type CompositeFocusInputs = {
   readonly element: HTMLElement;
   readonly activeIndex: Signal<number>;
-  readonly focusStrategy: Signal<'activedescendant' | 'rovingtabindex'>;
+  readonly focusStrategy: Signal<FocusStrategy>;
   readonly disabled: Signal<boolean>;
 };
 

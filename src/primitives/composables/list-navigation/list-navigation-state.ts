@@ -1,9 +1,11 @@
 import { Signal, WritableSignal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema, writable } from '../../base/state';
 
+export type Orientation = 'horizontal' | 'vertical';
+
 export type ListNavigationInputs = {
   readonly activatedElement: Signal<HTMLElement | null>;
-  readonly orientation: Signal<'horizontal' | 'vertical'>;
+  readonly orientation: Signal<Orientation>;
 };
 
 export type ListNavigationItemInputs = {

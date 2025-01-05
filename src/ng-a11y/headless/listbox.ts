@@ -1,19 +1,16 @@
-import {
-  computed,
-  contentChildren,
-  Directive,
-  ElementRef,
-  inject,
-  input,
-  Signal,
-} from '@angular/core';
-import { createState } from '../../primitives/base/state';
+import { computed, contentChildren, Directive, ElementRef, inject, input } from '@angular/core';
+import { createState, InstanceState } from '../../primitives/base/state';
+import { FocusStrategy } from '../../primitives/composables/composite-focus/composite-focus-state';
+import { Orientation } from '../../primitives/composables/list-navigation/list-navigation-state';
 import {
   ListboxOptionInputs,
-  ListboxOptionState,
-  ListboxState,
+  ListboxStateSchema,
   listboxStateSchema,
 } from '../../primitives/composables/listbox/listbox-state';
+import {
+  SelectionStrategy,
+  SelectionType,
+} from '../../primitives/composables/selection/selection-state';
 import { BindListboxOptionState, BindListboxState } from '../bindings/listbox';
 
 @Directive({
@@ -22,34 +19,49 @@ import { BindListboxOptionState, BindListboxState } from '../bindings/listbox';
   hostDirectives: [BindListboxState],
 })
 export class ListboxDirective {
-  readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  readonly activeIndex = input(-1);
-  readonly disabled = input(false);
-  readonly focusStrategy = input<'activedescendant' | 'rovingtabindex'>('rovingtabindex');
-  readonly orientation = input<'horizontal' | 'vertical'>('vertical');
-  readonly selectionType = input<'single' | 'multiple'>('single');
-  readonly selectionStrategy = input<'followfocus' | 'explicit'>('followfocus');
-  readonly wrapNavigation = input(false);
+  // Inputs
+  readonly inputActiveIndex = input(-1, { alias: 'activeIndex' });
+  readonly inputDisabled = input(false, { alias: 'disabled' });
+  readonly inputFocusStrategy = input<FocusStrategy>('rovingtabindex', { alias: 'focusStrategy' });
+  readonly inputOrientation = input<Orientation>('vertical', { alias: 'orientation' });
+  readonly inputSelectionType = input<SelectionType>('single', { alias: 'selectionType' });
+  readonly inputSelectionStrategy = input<SelectionStrategy>('followfocus', {
+    alias: 'selectionStrategy',
+  });
+  readonly inputWrapNavigation = input(false, { alias: 'wrapNavigation' });
 
-  readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
-  readonly selectedValues = computed(() => new Set<number>());
-  readonly compareValues = computed(() => (a: number, b: number) => a === b);
-  readonly explicitDisabled = computed(() => this.disabled());
+  // Child options
+  readonly options = contentChildren(ListboxOptionDirective);
 
-  readonly items = contentChildren(ListboxOptionDirective);
+  // Listbox instance state
+  readonly listboxState: InstanceState<ListboxStateSchema<number>, HTMLElement>;
 
-  readonly state: ListboxState<number>;
-  readonly itemStatesMap: Signal<Map<ListboxOptionInputs<number>, ListboxOptionState<number>>>;
+  // TODO: expose relevant properties, outputs, etc based on the state.
 
   constructor() {
-    const instanceState = createState(listboxStateSchema<number>(), this, this.items);
+    this.listboxState = createState(
+      listboxStateSchema<number>(),
+      {
+        element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
+        explicitDisabled: this.inputDisabled,
+        activatedElement: computed(
+          () => this.options()[this.inputActiveIndex()]?.stateInputs.element ?? null,
+        ),
+        orientation: this.inputOrientation,
+        focusStrategy: this.inputFocusStrategy,
+        selectionStrategy: this.inputSelectionStrategy,
+        selectionType: this.inputSelectionType,
+        selectedValues: computed(() => new Set<number>()),
+        compareValues: computed(() => (a: number, b: number) => a === b),
+      },
+      computed(() => this.options().map((option) => option.stateInputs)),
+      (o) => o.element,
+    );
 
-    this.state = instanceState.parentState;
-    this.itemStatesMap = instanceState.itemStatesMap;
-
-    const options = computed(() => ({ wrapNavigation: this.wrapNavigation() }));
-
-    BindListboxState.bindHost({ ...instanceState, options });
+    BindListboxState.bindHost({
+      ...this.listboxState,
+      options: computed(() => ({ wrapNavigation: this.inputWrapNavigation() })),
+    });
   }
 }
 
@@ -61,16 +73,26 @@ let nextId = 0;
   hostDirectives: [BindListboxOptionState],
 })
 export class ListboxOptionDirective {
-  readonly element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  readonly parent = inject(ListboxDirective);
-  readonly disabled = input(false);
-  readonly id = computed(() => `listbox-option-${nextId++}`);
-  readonly value = computed(() => this.parent.items().indexOf(this));
-  readonly explicitDisabled = computed(() => this.disabled());
+  // Inputs
+  readonly inputDisabled = input(false, { alias: 'disabled' });
 
-  readonly state = computed(() => this.parent.itemStatesMap().get(this)!);
+  readonly stateInputs: ListboxOptionInputs<number> = {
+    element: inject<ElementRef<HTMLElement>>(ElementRef).nativeElement,
+    explicitDisabled: this.inputDisabled,
+    id: computed(() => `listbox-option-${nextId++}`),
+    value: computed(() => this.parent.options().indexOf(this)),
+  };
+
+  // Owning listbox
+  readonly parent = inject(ListboxDirective);
+
+  // TODO: expose relevant properties, outputs, etc based on the state.
 
   constructor() {
-    BindListboxOptionState.bindHost({ state: this.state });
+    BindListboxOptionState.bindHost({
+      state: computed(
+        () => this.parent.listboxState.itemStatesMap().get(this.stateInputs.element)!,
+      ),
+    });
   }
 }
