@@ -96,17 +96,28 @@ export type StateSchema<PI extends State, II extends State, PO extends State, IO
 };
 
 /**
- * Defines a state schema based on composing two other state schemas.
+ * Defines a state schema based on composing other state schemas.
  */
-export type ComposedStateSchema<
-  S1 extends StateSchema<any, any, any, any>,
-  S2 extends StateSchema<any, any, any, any>,
-> =
-  S1 extends StateSchema<infer PI1, infer II1, infer PO1, infer IO1>
-    ? S2 extends StateSchema<infer PI2, infer II2, infer PO2, infer IO2>
-      ? StateSchema<PI1 & Omit<PI2, keyof PO1>, II1 & Omit<II2, keyof IO1>, PO1 & PO2, IO1 & IO2>
-      : never
-    : never;
+export type ComposedStateSchema<T extends [...StateSchema<any, any, any, any>[]]> = T extends [
+  StateSchema<infer PI1, infer II1, infer PO1, infer IO1>,
+  ...infer R1,
+]
+  ? R1 extends [StateSchema<infer PI2, infer II2, infer PO2, infer IO2>, ...infer R2]
+    ? R2 extends [...StateSchema<any, any, any, any>[]]
+      ? ComposedStateSchema<
+          [
+            StateSchema<
+              PI1 & Omit<PI2, keyof PO1>,
+              II1 & Omit<II2, keyof IO1>,
+              PO1 & PO2,
+              IO1 & IO2
+            >,
+            ...R2,
+          ]
+        >
+      : StateSchema<PI1 & Omit<PI2, keyof PO1>, II1 & Omit<II2, keyof IO1>, PO1 & PO2, IO1 & IO2>
+    : StateSchema<PI1, II1, PO1, IO1>
+  : never;
 
 /**
  * Extracts the parent input state type from a state schema.
@@ -284,36 +295,31 @@ export function createState<S extends StateSchema<any, any, any, any>>(
 }
 
 /**
- * Composes two state schemas into a single schema that combines their state.
+ * Composes multiple state schemas into a single schema that combines their state.
  *
- * The input state for the new schema consists of the input properties for the first schema, plus
- * any input properties for the second schema that are not provided by the first schema's output
- * state.
+ * Two schemas are composed as follows:
+ * - The input state for the new schema consists of the input properties for the first schema, plus
+ *   any input properties for the second schema that are not provided by the first schema's output
+ *   state.
+ * - The output state for the new schema consists of all properties in the output state of both
+ *   schemas.
+ * - If both schemas define computations for the same property, the new schema will define a new
+ *   computation by composing the functions, with the result of the first schema's computation being
+ *   passed as the named `inputValue` argument to the second schema's computation function.
  *
- * The output state for the new schema consists of all properties in the output state of both
- * schemas.
- *
- * If both schemas define computations for the same property, the new schema will define a new
- * computation by composing the functions, with the result of the first schema's computation being
- * passed as the named `inputValue` argument to the second schema's computation function.
+ * If more than two schemas are provided, they are composed pairwise from left to right, according
+ * to the proccess above.
  */
-export function composeSchema<
-  S1 extends StateSchema<any, any, any, any>,
-  S2 extends StateSchema<any, any, any, any>,
->(s1: S1, s2: S2): ComposedStateSchema<S1, S2> {
+export function composeStates<T extends StateSchema<any, any, any, any>[]>(
+  ...schemas: T
+): ComposedStateSchema<T> {
   return {
     computations: {
-      parent: composeComputations(
-        s1.computations.parent as StateComputations<Record<string, unknown>, State, State>,
-        s2.computations.parent as StateComputations<Record<string, unknown>, State, State>,
-      ),
-      item: composeComputations(
-        s1.computations.item as StateComputations<Record<string, unknown>, State, State>,
-        s2.computations.item as StateComputations<Record<string, unknown>, State, State>,
-      ),
+      parent: composeComputations(schemas.map((s) => s.computations.parent) as any),
+      item: composeComputations(schemas.map((s) => s.computations.item) as any),
     },
-    sync: [...(s1.sync ?? []), ...(s2.sync ?? [])],
-  } as ComposedStateSchema<S1, S2>;
+    sync: schemas.flatMap((s) => s.sync ?? []),
+  } as any;
 }
 
 /**
@@ -326,7 +332,7 @@ export function writable<T>(fn: T): T & { [WRITABLE]: true } {
 }
 
 function composeComputations(
-  ...computations: (StateComputations<Record<string, unknown>, State, State> | undefined)[]
+  computations: (StateComputations<Record<string, unknown>, State, State> | undefined)[],
 ): StateComputations<Record<string, unknown>, State, State> | undefined {
   const computationLists: Record<
     PropertyKey,

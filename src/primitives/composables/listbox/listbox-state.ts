@@ -1,5 +1,5 @@
 import {
-  composeSchema,
+  composeStates,
   ItemInputType,
   ItemOutputType,
   ItemStateType,
@@ -28,14 +28,11 @@ export type ListboxState<T> = ParentStateType<ListboxStateSchema<T>>;
 export type ListboxOptionState<T> = ItemStateType<ListboxStateSchema<T>>;
 
 export function listboxStateSchema<T>() {
-  return composeSchema(
-    composeSchema(
-      compositeDisabledStateSchema(),
-      composeSchema(
-        composeSchema(listNavigationStateSchema(), typeaheadStateSchema()),
-        compositeFocusStateSchema(),
-      ),
-    ),
+  return composeStates(
+    compositeDisabledStateSchema(),
+    listNavigationStateSchema(),
+    typeaheadStateSchema(),
+    compositeFocusStateSchema(),
     selectionStateSchema<T>(),
   );
 }
