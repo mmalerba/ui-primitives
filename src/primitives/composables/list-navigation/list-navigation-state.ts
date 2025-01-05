@@ -8,7 +8,7 @@ export type ListNavigationInputs = {
 
 export type ListNavigationItemInputs = {
   readonly element: HTMLElement;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type ListNavigationOutputs = {
@@ -38,7 +38,7 @@ const schema: ListNavigationStateSchema = {
       activeIndex: ({ self, items }) => {
         const idx = items().findIndex((item) => item.element === self.activatedElement());
         return idx === -1 && items().length
-          ? getIndex(items, -1, (i) => getNextIndex(self, items, i, false))
+          ? getIndex(items, -1, (i) => getNextIndex(items, i, false))
           : idx;
       },
     },
@@ -51,7 +51,6 @@ const schema: ListNavigationStateSchema = {
 export const listNavigationStateSchema = () => schema;
 
 export function getNextIndex(
-  list: ListNavigationState,
   items: Signal<readonly ListNavigationItemState[]>,
   index: number,
   wrap: boolean,
@@ -72,7 +71,7 @@ export function getIndex(
       return -1;
     }
     // If we land on a non-disabled item, stop and navigate to it.
-    if (!items()[index].compositeDisabled()) {
+    if (!items()[index].disabled()) {
       break;
     }
 

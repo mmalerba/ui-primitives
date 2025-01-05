@@ -5,11 +5,10 @@ import { TypeaheadItemState, TypeaheadState } from './typeahead-state';
 export interface TypeaheadControllerOptions {
   typeaheadMatcher: (item: TypeaheadItemState, query: string) => boolean;
   debounceMs: number;
-  afterNavigation?: () => void;
 }
 
 const defaultOptions: TypeaheadControllerOptions = {
-  typeaheadMatcher: (item, query) => !!item.element.textContent?.toLowerCase().includes(query),
+  typeaheadMatcher: (item, query) => !!item.element.textContent?.toLowerCase().startsWith(query),
   debounceMs: 500,
 };
 
@@ -48,8 +47,13 @@ export class TypeaheadController {
     );
 
     if (index !== -1) {
-      this.parent.activatedElement.set(this.items()[index].element);
-      this.options().afterNavigation?.();
+      if (!this.items()[index].disabled()) {
+        this.parent.activatedElement.set(this.items()[index].element);
+      } else {
+        this.items()[index].element.scrollIntoView({
+          block: 'nearest',
+        });
+      }
     }
 
     this.timeout = setTimeout(() => {

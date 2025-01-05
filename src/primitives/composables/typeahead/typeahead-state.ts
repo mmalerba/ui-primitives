@@ -7,7 +7,7 @@ export type TypeaheadInputs = {
 
 export type TypeaheadItemInputs = {
   readonly element: HTMLElement;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type TypeaheadOutputs = {

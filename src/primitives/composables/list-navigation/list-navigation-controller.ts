@@ -86,8 +86,7 @@ export class ListNavigationController implements Controller {
     return this.options().wrap && index === 0 ? this.items().length - 1 : index - 1;
   };
 
-  private getNextIndex = (index: number) =>
-    getNextIndex(this.list, this.items, index, this.options().wrap);
+  private getNextIndex = (index: number) => getNextIndex(this.items, index, this.options().wrap);
 
   private navigate(initial: number, navigateFn: (i: number) => number): void {
     const index = getIndex(this.items, initial, navigateFn);

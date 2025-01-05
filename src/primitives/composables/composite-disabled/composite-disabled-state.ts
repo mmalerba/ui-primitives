@@ -2,19 +2,19 @@ import { Signal } from '@angular/core';
 import { ItemStateType, ParentStateType, StateSchema } from '../../base/state';
 
 export type CompositeDisabledInputs = {
-  readonly disabled: Signal<boolean>;
+  readonly explicitDisabled: Signal<boolean>;
 };
 
 export type CompositeDisabledItemInputs = {
-  readonly disabled: Signal<boolean>;
+  readonly explicitDisabled: Signal<boolean>;
 };
 
 export type CompositeDisabledOutputs = {
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type CompositeDisabledItemOutputs = {
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type CompositeDisabledStateSchema = StateSchema<
@@ -31,11 +31,11 @@ export type CompositeDisabledItemState = ItemStateType<CompositeDisabledStateSch
 const schema: CompositeDisabledStateSchema = {
   computations: {
     parent: {
-      compositeDisabled: ({ self, items }) =>
-        self.disabled() || items().every((item) => item.disabled()),
+      disabled: ({ self, items }) =>
+        self.explicitDisabled() || items().every((item) => item.explicitDisabled()),
     },
     item: {
-      compositeDisabled: ({ self, parent }) => self.disabled() || parent.disabled(),
+      disabled: ({ self, parent }) => self.explicitDisabled() || parent.explicitDisabled(),
     },
   },
 };

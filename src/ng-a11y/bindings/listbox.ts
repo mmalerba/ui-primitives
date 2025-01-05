@@ -23,7 +23,7 @@ export interface ListboxOptionBinding<T> {
   host: {
     '[attr.role]': 'state() ? "listbox" : null',
     '[attr.aria-activedescendant]': 'state()?.activeDescendantId()',
-    '[attr.disabled]': 'state()?.compositeDisabled() || null',
+    '[attr.disabled]': 'state()?.disabled() || null',
     '[attr.tabindex]': 'state()?.tabindex()',
     '(click)': 'controller()?.handlers.click($event)',
     '(keydown)': 'controller()?.handlers.keydown($event)',
@@ -59,7 +59,7 @@ export class BindListboxState<T> {
   host: {
     '[attr.role]': 'state() ? "option" : null',
     '[attr.aria-selected]': 'state()?.selected()',
-    '[attr.disabled]': 'state()?.compositeDisabled() || null',
+    '[attr.disabled]': 'state()?.disabled() || null',
     '[attr.id]': 'state()?.id()',
     '[attr.tabindex]': 'state()?.tabindex()',
     '[class.active]': 'state()?.active()',

@@ -117,7 +117,7 @@ export class SelectionController implements Controller {
     const upper = Math.max(fromIndex, toIndex);
     let newValues = new Set(this.parent.selectedValues());
     for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.items().length - 1); idx++) {
-      if (this.items()[idx].compositeDisabled() || this.items()[idx].selected()) {
+      if (this.items()[idx].disabled() || this.items()[idx].selected()) {
         continue;
       }
       newValues.add(this.items()[idx].value());
@@ -136,7 +136,7 @@ export class SelectionController implements Controller {
     const upper = Math.max(fromIndex, toIndex);
     let newValues: Set<unknown> = new Set(this.parent.selectedValues());
     for (let idx = Math.max(lower, 0); idx <= Math.min(upper, this.items().length - 1); idx++) {
-      if (this.items()[idx].compositeDisabled() || !this.items()[idx].selected()) {
+      if (this.items()[idx].disabled() || !this.items()[idx].selected()) {
         continue;
       }
       newValues.delete(this.items()[idx].value());
@@ -179,7 +179,7 @@ export class SelectionController implements Controller {
   }
 
   private isIndexSelectable(index: number) {
-    return this.items()[index] && !this.items()[index].compositeDisabled();
+    return this.items()[index] && !this.items()[index].disabled();
   }
 
   private getTargetIndex(event: MouseEvent) {

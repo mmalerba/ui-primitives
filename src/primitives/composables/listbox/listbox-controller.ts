@@ -76,7 +76,7 @@ export class ListboxController implements Controller {
     this.options = computed(() => ({ ...defaultOptions, ...options?.() }));
     this.focusController = new CompositeFocusController(parent, items);
     this.selectionController = new SelectionController(parent, items);
-    this.typeaheadController = new TypeaheadController(parent, items, this.navigationOptions);
+    this.typeaheadController = new TypeaheadController(parent, items);
     this.navigationController = new ListNavigationController(parent, items, this.navigationOptions);
     this.focusoutManager = this.focusController.focusoutManager;
   }

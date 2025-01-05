@@ -7,13 +7,13 @@ export type SelectionInputs<T> = {
   readonly selectionType: Signal<'single' | 'multiple'>;
   readonly selectionStrategy: Signal<'followfocus' | 'explicit'>;
   readonly compareValues: Signal<(a: T, b: T) => boolean>;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type SelectionOptionInputs<T> = {
   readonly element: HTMLElement;
   readonly value: Signal<T>;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type SelectionOutputs<T> = {

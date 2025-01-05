@@ -34,6 +34,7 @@ export class ListboxDirective {
   readonly activatedElement = computed(() => this.items()[this.activeIndex()]?.element ?? null);
   readonly selectedValues = computed(() => new Set<number>());
   readonly compareValues = computed(() => (a: number, b: number) => a === b);
+  readonly explicitDisabled = computed(() => this.disabled());
 
   readonly items = contentChildren(ListboxOptionDirective);
 
@@ -65,6 +66,7 @@ export class ListboxOptionDirective {
   readonly disabled = input(false);
   readonly id = computed(() => `listbox-option-${nextId++}`);
   readonly value = computed(() => this.parent.items().indexOf(this));
+  readonly explicitDisabled = computed(() => this.disabled());
 
   readonly state = computed(() => this.parent.itemStatesMap().get(this)!);
 

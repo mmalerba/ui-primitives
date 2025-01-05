@@ -5,12 +5,12 @@ export type CompositeFocusInputs = {
   readonly element: HTMLElement;
   readonly activeIndex: Signal<number>;
   readonly focusStrategy: Signal<'activedescendant' | 'rovingtabindex'>;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
 };
 
 export type CompositeFocusItemInputs = {
   readonly element: HTMLElement;
-  readonly compositeDisabled: Signal<boolean>;
+  readonly disabled: Signal<boolean>;
   readonly id: Signal<string>;
 };
 
@@ -38,14 +38,14 @@ const schema: CompositeFocusStateSchema = {
   computations: {
     parent: {
       tabindex: ({ self }) =>
-        self.focusStrategy() === 'activedescendant' && !self.compositeDisabled() ? 0 : -1,
+        self.focusStrategy() === 'activedescendant' && !self.disabled() ? 0 : -1,
       activeDescendantId: ({ self, items }) =>
         self.focusStrategy() === 'activedescendant' ? items()[self.activeIndex()]?.id() : undefined,
     },
     item: {
       tabindex: ({ self, parent, index }) =>
         parent.focusStrategy() === 'rovingtabindex' &&
-        !self.compositeDisabled() &&
+        !self.disabled() &&
         parent.activeIndex() === index()
           ? 0
           : -1,
