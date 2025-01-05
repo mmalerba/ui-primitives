@@ -5,10 +5,10 @@ import { CompositeFocusItemState, CompositeFocusState } from './composite-focus-
 
 export class CompositeFocusController implements Controller {
   readonly handlers = {
-    focusout: (e: FocusEvent) => this.focusutManager.handle(e),
+    focusout: (e: FocusEvent) => this.focusoutManager.handle(e),
   } as const;
 
-  readonly focusutManager = new GenericEventManager<FocusEvent>().on((e) => {
+  readonly focusoutManager = new GenericEventManager<FocusEvent>().on((e) => {
     // If the active element is blurred due to its imminent removal from the DOM,
     // focus the new active element.
     if (this.items()[this.parent.activeIndex()]?.element === e.target) {

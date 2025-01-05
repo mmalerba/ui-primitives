@@ -11,13 +11,14 @@ import {
 } from './list-navigation-state';
 
 export interface ListNavigationControllerOptions {
-  keydownModifier: ModifierKey | ModifierKey[];
+  arrowKeyModifiers: ModifierKey | ModifierKey[];
+  homeEndKeyModifiers: ModifierKey | ModifierKey[];
   wrap: boolean;
-  afterNavigation?: () => void;
 }
 
 const defaultOptions: ListNavigationControllerOptions = {
-  keydownModifier: ModifierKey.None,
+  arrowKeyModifiers: ModifierKey.None,
+  homeEndKeyModifiers: ModifierKey.None,
   wrap: false,
 };
 
@@ -36,16 +37,16 @@ export class ListNavigationController implements Controller {
     const previousKey = this.list.orientation() === 'vertical' ? 'ArrowUp' : 'ArrowLeft';
     const nextKey = this.list.orientation() === 'vertical' ? 'ArrowDown' : 'ArrowRight';
     return new KeyboardEventManager()
-      .on(this.options().keydownModifier, previousKey, () => {
+      .on(this.options().arrowKeyModifiers, previousKey, () => {
         this.navigatePrevious();
       })
-      .on(this.options().keydownModifier, nextKey, () => {
+      .on(this.options().arrowKeyModifiers, nextKey, () => {
         this.navigateNext();
       })
-      .on(this.options().keydownModifier, 'Home', () => {
+      .on(this.options().homeEndKeyModifiers, 'Home', () => {
         this.navigateFirst();
       })
-      .on(this.options().keydownModifier, 'End', () => {
+      .on(this.options().homeEndKeyModifiers, 'End', () => {
         this.navigateLast();
       });
   });
@@ -92,7 +93,6 @@ export class ListNavigationController implements Controller {
     const index = getIndex(this.items, initial, navigateFn);
     if (index !== -1) {
       this.list.activatedElement.set(this.items()[index].element);
-      this.options().afterNavigation?.();
     }
   }
 }

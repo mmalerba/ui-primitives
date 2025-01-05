@@ -51,21 +51,6 @@ export class KeyboardEventManager extends EventManager<KeyboardEvent> {
     return this;
   }
 
-  override override(
-    modifiers: number | number[],
-    key: string | ((key: string) => boolean),
-    handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
-    options?: Partial<EventHandlerOptions>,
-  ): this;
-  override override(
-    key: string | ((key: string) => boolean),
-    handler: ((event: KeyboardEvent) => void) | ((event: KeyboardEvent) => boolean),
-    options?: Partial<EventHandlerOptions>,
-  ): this;
-  override override(...args: any): this {
-    return super.override(...args);
-  }
-
   getConfigs(event: KeyboardEvent) {
     let configs: KeyboardEventHandlerConfig[] = [];
     for (const config of this.configs) {

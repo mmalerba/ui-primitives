@@ -19,14 +19,15 @@ export interface EventHandlerOptions {
 }
 
 export interface EventHandlerConfig<T extends Event> extends EventHandlerOptions {
-  handler: (event: T) => void | boolean;
-  override?: boolean;
+  handler: (event: T) => void;
 }
 
 export abstract class EventManager<T extends Event> {
   private submanagers: EventManager<T>[] = [];
 
   protected configs: EventHandlerConfig<T>[] = [];
+  protected beforeFns: ((event: T) => void)[] = [];
+  protected afterFns: ((event: T) => void)[] = [];
 
   protected defaultHandlerOptions: EventHandlerOptions = {
     preventDefault: false,
@@ -47,19 +48,17 @@ export abstract class EventManager<T extends Event> {
   }
 
   handle(event: T): true | undefined {
-    let configs = [this, ...this.submanagers].flatMap((sm) => sm.getConfigs(event));
-    for (let i = configs.length - 1; i >= 0; i--) {
-      if (configs[i].override) {
-        configs = configs.slice(i);
-        break;
-      }
+    if (!this.isHandled(event)) {
+      return undefined;
     }
-    let handled: true | undefined = undefined;
-    for (const config of configs) {
-      if (!config || config.handler(event) === false) {
-        continue;
-      }
-      handled = true;
+    for (const fn of this.beforeFns) {
+      fn(event);
+    }
+    for (const submanager of this.submanagers) {
+      submanager.handle(event);
+    }
+    for (const config of this.getConfigs(event)) {
+      config.handler(event);
       if (config.stopPropagation) {
         event.stopPropagation();
       }
@@ -67,18 +66,29 @@ export abstract class EventManager<T extends Event> {
         event.preventDefault();
       }
     }
-    return handled;
+    for (const fn of this.afterFns) {
+      fn(event);
+    }
+    return true;
+  }
+
+  beforeHandling(fn: (event: T) => void): this {
+    this.beforeFns.push(fn);
+    return this;
+  }
+
+  afterHandling(fn: (event: T) => void): this {
+    this.afterFns.push(fn);
+    return this;
   }
 
   abstract on(...args: [...unknown[]]): this;
 
-  override(...args: Parameters<this['on']>): this {
-    this.on(...args);
-    this.configs[this.configs.length - 1].override = true;
-    return this;
-  }
-
   protected abstract getConfigs(event: T): EventHandlerConfig<T>[];
+
+  protected isHandled(event: T): boolean {
+    return this.getConfigs(event).length > 0 || this.submanagers.some((sm) => sm.isHandled(event));
+  }
 }
 
 export class GenericEventManager<T extends Event> extends EventManager<T> {
@@ -88,11 +98,6 @@ export class GenericEventManager<T extends Event> extends EventManager<T> {
       handler,
     });
     return this;
-  }
-
-  override override(handler: (event: T) => boolean | void): this;
-  override override(...args: any): this {
-    return super.override(...args);
   }
 
   getConfigs(_event: T): EventHandlerConfig<T>[] {

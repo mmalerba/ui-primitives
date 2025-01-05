@@ -1,5 +1,4 @@
 import { computed, signal, Signal } from '@angular/core';
-import { ModifierKey } from '../../base/event-manager';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
 import { TypeaheadItemState, TypeaheadState } from './typeahead-state';
 
@@ -27,7 +26,6 @@ export class TypeaheadController {
   readonly query = signal('');
 
   readonly keydownManager = new KeyboardEventManager().on(
-    [ModifierKey.None, ModifierKey.Shift],
     (key) => key.length === 1 && validKeyPattern.test(key),
     (event) => this.search(event.key),
   );

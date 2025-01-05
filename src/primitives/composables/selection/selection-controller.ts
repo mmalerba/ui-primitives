@@ -1,6 +1,6 @@
 import { computed, Signal } from '@angular/core';
 import { Controller } from '../../base/controller';
-import { ModifierKey } from '../../base/event-manager';
+import { GenericEventManager, getModifiers, ModifierKey } from '../../base/event-manager';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
 import { MouseButton, MouseEventManager } from '../../base/mouse-event-manager';
 import { SelectionOptionState, SelectionState } from './selection-state';
@@ -61,6 +61,8 @@ export class SelectionController implements Controller {
       }
     }
   });
+
+  private previousActiveIndex = -1;
 
   constructor(
     private readonly parent: SelectionState<any>,
@@ -150,6 +152,30 @@ export class SelectionController implements Controller {
     }
     this.parent.selectedValues.set(new Set([this.items()[index].value()]));
     this.parent.lastSelectedIndex.set(index);
+  }
+
+  addSelectionOnNavigation(navigationKeydownManager: GenericEventManager<KeyboardEvent>) {
+    return navigationKeydownManager
+      .beforeHandling(() => {
+        this.previousActiveIndex = this.parent.activeIndex();
+      })
+      .afterHandling((event) => {
+        const modifiers = getModifiers(event);
+        if (modifiers === ModifierKey.None && this.parent.selectionStrategy() === 'followfocus') {
+          if (this.parent.selectionType() === 'single') {
+            this.select(this.parent.activeIndex());
+          } else {
+            this.deselectAll();
+            this.select(this.parent.activeIndex());
+          }
+        }
+        if (modifiers === ModifierKey.Shift && this.parent.selectionType() === 'multiple') {
+          this.toggle(this.parent.activeIndex());
+        }
+        if (modifiers === (ModifierKey.Ctrl | ModifierKey.Shift)) {
+          this.selectRange(this.previousActiveIndex, this.parent.activeIndex());
+        }
+      });
   }
 
   private isIndexSelectable(index: number) {

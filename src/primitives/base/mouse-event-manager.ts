@@ -60,21 +60,6 @@ export class MouseEventManager extends EventManager<MouseEvent> {
     return this;
   }
 
-  override override(
-    modifiers: number | number[],
-    button: MouseButton,
-    handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
-    options?: EventHandlerOptions,
-  ): this;
-  override override(
-    button: MouseButton,
-    handler: ((event: MouseEvent) => void) | ((event: MouseEvent) => boolean),
-    options?: EventHandlerOptions,
-  ): this;
-  override override(...args: any): this {
-    return super.override(...args);
-  }
-
   getConfigs(event: MouseEvent) {
     const configs: MouseEventHandlerConfig[] = [];
     for (const config of this.configs) {
