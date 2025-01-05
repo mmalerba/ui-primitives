@@ -1,3 +1,31 @@
+/**
+ * An event that supports modifier keys.
+ */
+export interface EventWithModifiers extends Event {
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}
+
+/**
+ * Options that are applicable to all event handlers.
+ */
+export interface EventHandlerOptions {
+  stopPropagation: boolean;
+  preventDefault: boolean;
+}
+
+/**
+ * A config that specifies how to handle a particular event.
+ */
+export interface EventHandlerConfig<T extends Event> extends EventHandlerOptions {
+  handler: (event: T) => void;
+}
+
+/**
+ * Bit flag representation of the possible modifier keys that can be present on an event.
+ */
 export enum ModifierKey {
   None = 0,
   Ctrl = 0b1,
@@ -6,22 +34,9 @@ export enum ModifierKey {
   Meta = 0b1000,
 }
 
-export interface EventWithModifiers extends Event {
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-}
-
-export interface EventHandlerOptions {
-  stopPropagation: boolean;
-  preventDefault: boolean;
-}
-
-export interface EventHandlerConfig<T extends Event> extends EventHandlerOptions {
-  handler: (event: T) => void;
-}
-
+/**
+ * Abstract base class for all event managers.
+ */
 export abstract class EventManager<T extends Event> {
   private submanagers: EventManager<T>[] = [];
 
@@ -41,12 +56,24 @@ export abstract class EventManager<T extends Event> {
     };
   }
 
+  /**
+   * Composes together multiple event managers into a single event manager that delegates to the
+   * individual managers.
+   */
   static compose<T extends Event>(...managers: EventManager<T>[]) {
     const composedManager = new GenericEventManager<T>();
     composedManager.submanagers = managers;
     return composedManager;
   }
 
+  /**
+   * Runs any handlers that have been configured to handle this event. If multiple handlers are
+   * configured for this event, they are run in the order they were configured. Returns
+   * `true` if the event has been handled, otherwise returns `undefined`.
+   *
+   * Note: the use of `undefined` instead of `false` in the unhandled case is necessary to avoid
+   * accidentally preventing the default behavior on an unhandled event.
+   */
   handle(event: T): true | undefined {
     if (!this.isHandled(event)) {
       return undefined;
@@ -72,26 +99,48 @@ export abstract class EventManager<T extends Event> {
     return true;
   }
 
+  /**
+   * Configures the event manager to run a function immediately before it as about to handle
+   * any event.
+   */
   beforeHandling(fn: (event: T) => void): this {
     this.beforeFns.push(fn);
     return this;
   }
 
+  /**
+   * Configures the event manager to run a function immediately after it handles any event.
+   */
   afterHandling(fn: (event: T) => void): this {
     this.afterFns.push(fn);
     return this;
   }
 
+  /**
+   * Configures the event manager to handle specific events. (See subclasses for more).
+   */
   abstract on(...args: [...unknown[]]): this;
 
+  /**
+   * Gets all of the handler configs that are applicable to the given event.
+   */
   protected abstract getConfigs(event: T): EventHandlerConfig<T>[];
 
+  /**
+   * Checks whether this event manager is confugred to handle the given event.
+   */
   protected isHandled(event: T): boolean {
     return this.getConfigs(event).length > 0 || this.submanagers.some((sm) => sm.isHandled(event));
   }
 }
 
+/**
+ * A generic event manager that can work with any type of event.
+ */
 export class GenericEventManager<T extends Event> extends EventManager<T> {
+  /**
+   * Configures this event manager to handle all events with the given handler.
+   */
   on(handler: (event: T) => boolean | void): this {
     this.configs.push({
       ...this.defaultHandlerOptions,
@@ -105,6 +154,9 @@ export class GenericEventManager<T extends Event> extends EventManager<T> {
   }
 }
 
+/**
+ * Gets bit flag representation of the modifier keys present on the given event.
+ */
 export function getModifiers(event: EventWithModifiers): number {
   return (
     (+event.ctrlKey && ModifierKey.Ctrl) |
@@ -114,6 +166,10 @@ export function getModifiers(event: EventWithModifiers): number {
   );
 }
 
+/**
+ * Checks if the given event has modifiers that are an exact match for any of the given modifier
+ * flag combinations.
+ */
 export function hasModifiers(event: EventWithModifiers, modifiers: number | number[]): boolean {
   const eventModifiers = getModifiers(event);
   const modifiersList = Array.isArray(modifiers) ? modifiers : [modifiers];

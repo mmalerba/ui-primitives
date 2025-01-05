@@ -1,6 +1,6 @@
 import { computed, Signal } from '@angular/core';
 import { Controller } from '../../base/controller';
-import { GenericEventManager, getModifiers, ModifierKey } from '../../base/event-manager';
+import { GenericEventManager, hasModifiers, ModifierKey } from '../../base/event-manager';
 import { KeyboardEventManager } from '../../base/keyboard-event-manager';
 import { MouseButton, MouseEventManager } from '../../base/mouse-event-manager';
 import { SelectionOptionState, SelectionState } from './selection-state';
@@ -160,8 +160,10 @@ export class SelectionController implements Controller {
         this.previousActiveIndex = this.parent.activeIndex();
       })
       .afterHandling((event) => {
-        const modifiers = getModifiers(event);
-        if (modifiers === ModifierKey.None && this.parent.selectionStrategy() === 'followfocus') {
+        if (
+          hasModifiers(event, ModifierKey.None) &&
+          this.parent.selectionStrategy() === 'followfocus'
+        ) {
           if (this.parent.selectionType() === 'single') {
             this.select(this.parent.activeIndex());
           } else {
@@ -169,10 +171,10 @@ export class SelectionController implements Controller {
             this.select(this.parent.activeIndex());
           }
         }
-        if (modifiers === ModifierKey.Shift && this.parent.selectionType() === 'multiple') {
+        if (hasModifiers(event, ModifierKey.Shift)) {
           this.toggle(this.parent.activeIndex());
         }
-        if (modifiers === (ModifierKey.Ctrl | ModifierKey.Shift)) {
+        if (hasModifiers(event, ModifierKey.Ctrl | ModifierKey.Shift)) {
           this.selectRange(this.previousActiveIndex, this.parent.activeIndex());
         }
       });
