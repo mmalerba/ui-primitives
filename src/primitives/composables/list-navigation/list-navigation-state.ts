@@ -6,6 +6,7 @@ export type Orientation = 'horizontal' | 'vertical';
 export type ListNavigationInputs = {
   readonly activatedElement: Signal<HTMLElement | null>;
   readonly orientation: Signal<Orientation>;
+  readonly selectedIndices?: Signal<readonly number[]>;
 };
 
 export type ListNavigationItemInputs = {
@@ -40,7 +41,7 @@ const schema: ListNavigationStateSchema = {
       activeIndex: ({ self, items }) => {
         const idx = items().findIndex((item) => item.element === self.activatedElement());
         return idx === -1 && items().length
-          ? getIndex(items, -1, (i) => getNextIndex(items, i, false))
+          ? getDefaultActiveIndex(items, self.selectedIndices)
           : idx;
       },
     },
@@ -86,4 +87,18 @@ export function getIndex(
   }
 
   return index;
+}
+
+function getDefaultActiveIndex(
+  items: Signal<readonly ListNavigationItemState[]>,
+  selectedIndices?: Signal<readonly number[]>,
+): number {
+  const firstSelectedIndex = selectedIndices?.().find(
+    (idx) => items()[idx] && !items()[idx].disabled(),
+  );
+  if (firstSelectedIndex !== undefined) {
+    return firstSelectedIndex;
+  }
+  const firstFocusable = getIndex(items, -1, (i) => getNextIndex(items, i, false));
+  return firstFocusable;
 }

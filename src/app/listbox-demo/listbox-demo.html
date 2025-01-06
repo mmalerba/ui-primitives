@@ -7,12 +7,14 @@
   [selectionType]="selectionType()"
   [selectionStrategy]="selectionStrategy()"
   [wrapNavigation]="wrapNavigation()"
+  [selectedValues]="[5]"
   [class.command-target]="commandTarget() === 'l'"
 >
   @for (item of items(); track item) {
     <li
       listboxOption
       [disabled]="disabledItems().has(item)"
+      [value]="$index"
       [class.command-target]="commandTarget() === $index"
     >
       <span class="index">{{ $index }}:</span> item #{{ item }}
