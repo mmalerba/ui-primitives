@@ -17,7 +17,7 @@ let nextId = 10;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ListboxDirective, ListboxOptionDirective, DemoControls],
 })
-export class ListboxDemo {
+export default class ListboxDemo {
   items = signal(Array.from({ length: nextId }, (_, i) => i));
 
   disabled = signal(false);
